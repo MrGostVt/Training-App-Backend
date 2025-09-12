@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthDataDTO } from './dto/authdata.dto';
 import { TokenData } from './type/tokenData.type';
+import { ConfigService } from '@nestjs/config';
 
 
 @Injectable()
@@ -17,6 +18,7 @@ export class AuthorizeService {
         @InjectRepository(AuthorizeEntity) private readonly authRepository: Repository<AuthorizeEntity>,
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
+        private readonly configService: ConfigService,
 
     ){}
     
@@ -76,7 +78,7 @@ export class AuthorizeService {
             throw new UnauthorizedException("Unauthorized");
         }
 
-        const jwt = await this.createJWT({id: user!.id, device})
+        const jwt = await this.createJWT({id: user!.id, device}, this.configService.getOrThrow('JWT_EXPIRE'))
 
         return {token: jwt};
     }

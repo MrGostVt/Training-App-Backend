@@ -17,6 +17,6 @@ import { JwtStrategy } from './strategy/jwt-auth.strategy';
     imports: [ConfigModule],
     inject: [ConfigModule],
     useFactory: getJWTConfig,
-  }), UserModule]
+  }), UserModule, ConfigModule]
 })
 export class AuthorizeModule {}
