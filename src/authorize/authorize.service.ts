@@ -11,7 +11,8 @@ import { AuthDataDTO } from './dto/authdata.dto';
 import { TokenData } from './type/tokenData.type';
 import { ConfigService } from '@nestjs/config';
 
-
+//TODO: Обновить сервис и сущность так, что бы можно было сохранять текущую занятость юзера (начал ли он прохождение теста или нет)
+//      Возможно использовать редис.
 @Injectable()
 export class AuthorizeService {
     constructor(
@@ -19,7 +20,6 @@ export class AuthorizeService {
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
-
     ){}
     
     async createNewUser(user: RegisterDTO, device): Promise<{token: string}>{

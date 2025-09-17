@@ -15,8 +15,8 @@ export class QuestionEntity{
     @Column({type: 'enum', enum: QuestionLevel, enumName: 'QuestionLevel', default: QuestionLevel.easy})
     level: QuestionLevel;
 
-    @Column({name: 'points_for'})
-    pointsFor: number;
+    @Column({name: 'max_points'})
+    maxPoints: number;
 
     @Column({type: 'enum', enum: QuestionType, enumName: 'QuestionType', default: QuestionType.default})
     type: QuestionType;
@@ -36,8 +36,11 @@ export class QuestionEntity{
     @ManyToOne(() => UserEntity, (user: UserEntity) => user.createdQuestions)
     author: UserEntity;
 
-    @ManyToOne(() => UserEntity, (user: UserEntity) => user.moderatedQuestions)
+    @ManyToOne(() => UserEntity, (user: UserEntity) => user.moderatedQuestions, {nullable: true})
     moderator: UserEntity;
+
+    @Column({name: 'last_moderator_passport', type: 'varchar', nullable: true})
+    lastModeratorPassport: string | null;
 
     @CreateDateColumn()
     createdAt: Date;

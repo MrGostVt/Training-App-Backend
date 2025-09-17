@@ -9,6 +9,19 @@ export class UserService {
         @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
     ){}
 
+    async findUser(passport: string): Promise<UserEntity | null>{
+        
+        const user = await this.userRepository.findOne({
+            where: {id: passport}
+        })
+
+        return user
+    }
+
+    async setLastTimestamp(time: Date, passport: string){
+        //Antifraud system, set last action to user by redis
+    }
+
     async createUser(): Promise<UserEntity>{
         const user: UserEntity = this.userRepository.create({});
 
