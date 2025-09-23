@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entity/user.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { ThemeService } from 'src/theme/theme.service';
+import { GradeService } from 'src/grade/grade.service';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
+        private readonly dataSource: DataSource,
+        private readonly themeService: ThemeService,
+        private readonly gradeService: GradeService,
     ){}
 
     async findUser(passport: string): Promise<UserEntity | null>{
@@ -22,12 +27,23 @@ export class UserService {
         //Antifraud system, set last action to user by redis
     }
 
-    async createUser(): Promise<UserEntity>{
-        const user: UserEntity = this.userRepository.create({});
+    async createUser(): Promise<UserEntity | null>{
+        const themes = await this.themeService.getAll();
 
-        await this.userRepository.save(user);
+        const userWithGrades = await this.dataSource.transaction(async (manager) => {
+            const user: UserEntity = manager.create(UserEntity, {});
+            await manager.save(user);
 
-        return user;
+            const grades = await Promise.all(
+                themes.map(theme => this.gradeService.create(user, theme))
+            );
+
+            manager.save(grades);
+
+            return user;
+        });
+
+        return userWithGrades;
     }
     async deleteUser(userId: string){
         const result = await this.userRepository.delete({id: userId});

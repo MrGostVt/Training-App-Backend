@@ -8,7 +8,7 @@ export class UserEntity{
     @PrimaryGeneratedColumn('uuid')
     id: string
 
-    @OneToMany(() => GradeEntity, (grade: GradeEntity) => grade.user)
+    @OneToMany(() => GradeEntity, (grade: GradeEntity) => grade.user, {cascade: true})
     grades: GradeEntity[];
 
     @OneToMany(() => QuestionEntity, (question: QuestionEntity) => question.author)
