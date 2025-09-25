@@ -24,11 +24,11 @@ export class GradeService {
         return true;
     }
 
-    async create(user: UserEntity, theme: ThemeEntity){
+    async create(passport: string, theme: ThemeEntity){
         const grade: GradeEntity = this.gradeRepository.create({
             grade: 0,
             theme: theme,
-            user: user,
+            user: {id: passport},
         })
 
         return grade;

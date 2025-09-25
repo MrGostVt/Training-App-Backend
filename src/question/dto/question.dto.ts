@@ -17,11 +17,6 @@ export class QuestionDTO{
         allowInfinity: false, 
     })
 
-    @IsInt()
-    @Min(2)
-    @Max(10)
-    maxPoints: number;
-
     @IsEnum(QuestionType)
     type: QuestionType;
 

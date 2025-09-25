@@ -14,6 +14,12 @@ import { ModerationResult } from './dto/moderation-result.dto';
 
 @Injectable()
 export class QuestionService {
+    private readonly questionRelation = [
+        {easy: 0.5, middle: 0.2, hard: 0.1, order: 0.2}, 
+        {easy: 0.2, middle: 0.4, hard: 0.2, order: 0.2},
+        {easy: 0, middle: 0.2, hard: 0.5, order: 0.3}
+    ];
+    private readonly questionCount = 10;
     constructor(
         @InjectRepository(QuestionEntity) private readonly questionRepository: Repository<QuestionEntity>,
         private readonly userService: UserService,
@@ -30,7 +36,7 @@ export class QuestionService {
     }
 
     async create(question: QuestionDTO, userPassport: string, userLevel: AccessLevel){
-        const {title, answers, rightAnswers, level, maxPoints, type, theme} = question;
+        const {title, answers, rightAnswers, level, type, theme} = question;
 
         const author = await this.userService.findUser(userPassport);
         const themeEntity = await this.themeService.find(theme);
@@ -41,9 +47,25 @@ export class QuestionService {
         if(!themeEntity){
             throw new BadRequestException('Theme not found');
         }
+
+        let maxPoints: number;
+
+        switch(level){
+            case QuestionLevel.easy: maxPoints = 3; break;
+            case QuestionLevel.middle: maxPoints = 5; break;
+            case QuestionLevel.hard: maxPoints = 7; break;
+            default: maxPoints = 3; break;
+        }
+
+        switch(type){
+            case QuestionType.default: maxPoints += 1; break;
+            case QuestionType.order: maxPoints += 2; break;
+            case QuestionType.input: maxPoints += 3; break; 
+            default: maxPoints += 1; break;
+        }
         
         try{
-            const questionEntity = await this.questionRepository.create({
+            const questionEntity = this.questionRepository.create({
                 title,
                 answers,
                 rightAnswers,
@@ -106,17 +128,28 @@ export class QuestionService {
         return query;
     }
 
+    //Возможно даже добавить отнимающие баллы
+    //Добавить авто генерацию вопросов. Для этого описать паттерны генерации в бд. Доступ только для админов
+    // 
+    
     async get(theme: string, passport: string){
         ['default', 'hard', 'othertype']
-        
-        const easy = await (this.generateQuestionQuery(theme, 3,[{key: 'level',value: QuestionLevel.easy}])).getMany()
-        const middle = await (this.generateQuestionQuery(theme, 3, [{key: 'level',value: QuestionLevel.middle}])).getMany()
-        const hard = await (this.generateQuestionQuery(theme,1, [{key: 'level',value: QuestionLevel.hard}])).getMany()
-        const order = await (this.generateQuestionQuery(theme,2, [{key: 'type',value: QuestionType.order}])).getMany()
+
+
+        const section: number | null = await this.themeService.getGradeSection(theme, passport);
+
+        if((section !== 0 && !section)){
+            throw new BadRequestException('Something went wrong');
+        }
+
+        const easy = await (this.generateQuestionQuery(theme, this.questionRelation[section].easy,[{key: 'level',value: QuestionLevel.easy}])).getMany()
+        const middle = await (this.generateQuestionQuery(theme, this.questionRelation[section].middle, [{key: 'level',value: QuestionLevel.middle}])).getMany()
+        const hard = await (this.generateQuestionQuery(theme, this.questionRelation[section].hard, [{key: 'level',value: QuestionLevel.hard}])).getMany()
+        const order = await (this.generateQuestionQuery(theme, this.questionRelation[section].order, [{key: 'type',value: QuestionType.order}])).getMany()
     
         const list = [...easy, ...middle, ...hard, ...order];
 
-        return list;
+        return {list};
     }
 
     private checkAnswerWithOrder(answers: number[], correctAnswers: number[], maxPoints: number): number{

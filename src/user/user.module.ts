@@ -10,7 +10,7 @@ import { GradeModule } from 'src/grade/grade.module';
 @Module({
   controllers: [UserController],
   providers: [UserService],
-  imports: [TypeOrmModule.forFeature([UserEntity]), ThemeModule, GradeModule],
+  imports: [TypeOrmModule.forFeature([UserEntity]), ThemeModule],
   exports: [UserService],
 })
 export class UserModule {}

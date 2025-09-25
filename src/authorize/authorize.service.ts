@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuthorizeEntity } from './entity/authorize.entity';
 import { Repository } from 'typeorm';
@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthDataDTO } from './dto/authdata.dto';
 import { TokenData } from './type/tokenData.type';
 import { ConfigService } from '@nestjs/config';
+import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
 
 //TODO: Обновить сервис и сущность так, что бы можно было сохранять текущую занятость юзера (начал ли он прохождение теста или нет)
 //      Возможно использовать редис.
@@ -23,20 +24,24 @@ export class AuthorizeService {
     ){}
     
     async createNewUser(user: RegisterDTO, device): Promise<{token: string}>{
-        const {userName, password} = user;
+        const {userName, password, isAdmin} = user;
 
         const isExist: Boolean = !!(await this.authRepository.findOne({where: {userName}}));
         if(isExist) throw new ConflictException("User already exist");
         
         const hash = await this.register(password);
 
-        const newUser: UserEntity = await this.userService.createUser();
-        
+        const newUser: UserEntity | null = await this.userService.createUser();
+        if(!newUser){
+            throw new BadRequestException('Something went wrong');
+        }
+
         try{
             const userAuth: AuthorizeEntity = this.authRepository.create({
                 userName,
                 passport: newUser.id,
                 hash,
+                accessLevel: isAdmin? AccessLevel.Admin: AccessLevel.Default,
             });
             await this.authRepository.save(userAuth);
             return await this.authByPassword({password, userName}, device);
@@ -46,6 +51,7 @@ export class AuthorizeService {
             throw new ConflictException('Something went wrong');
         }
     }
+    
     private async register(password: string){
         const salt = await this.getSalt();
 

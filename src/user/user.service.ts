@@ -5,19 +5,23 @@ import { DataSource, Repository } from 'typeorm';
 import { ThemeService } from 'src/theme/theme.service';
 import { GradeService } from 'src/grade/grade.service';
 
+//TODO:Сделать систему уровней, обновить поиск вопросов, допилить антифрод, тесты. 
 @Injectable()
 export class UserService {
     constructor(
         @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
-        private readonly dataSource: DataSource,
         private readonly themeService: ThemeService,
-        private readonly gradeService: GradeService,
     ){}
 
     async findUser(passport: string): Promise<UserEntity | null>{
         
         const user = await this.userRepository.findOne({
-            where: {id: passport}
+            where: {id: passport},
+            select: {
+                grades: true,
+                createdQuestions: true,
+                moderatedQuestions: true,
+            }
         })
 
         return user
@@ -28,22 +32,22 @@ export class UserService {
     }
 
     async createUser(): Promise<UserEntity | null>{
-        const themes = await this.themeService.getAll();
 
-        const userWithGrades = await this.dataSource.transaction(async (manager) => {
-            const user: UserEntity = manager.create(UserEntity, {});
-            await manager.save(user);
+        const user: UserEntity = this.userRepository.create({});
+        try{
+            await this.userRepository.save(user);
+            
+            const result: boolean = await this.themeService.loadDefaultGrades(user.id);
 
-            const grades = await Promise.all(
-                themes.map(theme => this.gradeService.create(user, theme))
-            );
+            if(!result){
+                throw 'Error';
+            }
 
-            manager.save(grades);
-
-            return user;
-        });
-
-        return userWithGrades;
+            return await this.findUser(user.id);
+        }
+        catch{
+            return null;
+        }
     }
     async deleteUser(userId: string){
         const result = await this.userRepository.delete({id: userId});

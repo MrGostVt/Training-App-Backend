@@ -15,16 +15,16 @@ export class QuestionEntity{
     @Column({type: 'enum', enum: QuestionLevel, enumName: 'QuestionLevel', default: QuestionLevel.easy})
     level: QuestionLevel;
 
-    @Column({name: 'max_points'})
+    @Column({name: 'max_points', type: 'int'})
     maxPoints: number;
 
     @Column({type: 'enum', enum: QuestionType, enumName: 'QuestionType', default: QuestionType.default})
     type: QuestionType;
 
-    @Column({})
+    @Column({type: 'varchar', array: true})
     answers: string[];
     
-    @Column({name: 'right_answers'})
+    @Column({name: 'right_answers', type: 'varchar', array: true})
     rightAnswers: number[];
 
     @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.questions, {cascade: true})
