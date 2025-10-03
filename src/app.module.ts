@@ -8,6 +8,8 @@ import { AuthorizeModule } from './authorize/authorize.module';
 import { ThemeModule } from './theme/theme.module';
 import { QuestionModule } from './question/question.module';
 import { GradeModule } from './grade/grade.module';
+import { QuestionGeneratorModule } from './question-generator/question-generator.module';
+import { RamDbModule } from './ram-db/ram-db.module';
 import getTypeOrmConfig from './config/typeorm.config';
 
 @Module({
@@ -23,7 +25,9 @@ import getTypeOrmConfig from './config/typeorm.config';
     AuthorizeModule,
     ThemeModule,
     QuestionModule,
-    GradeModule],
+    GradeModule,
+    QuestionGeneratorModule,
+    RamDbModule],
   controllers: [AppController],
   providers: [AppService],
 })
