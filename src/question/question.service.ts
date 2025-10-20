@@ -11,6 +11,10 @@ import { QuestionType } from 'src/common/enums/QuestionType.enum';
 import { AnswerDTO } from './dto/answer.dto';
 import { GradeService } from 'src/grade/grade.service';
 import { ModerationResult } from './dto/moderation-result.dto';
+import { DefaultQuestion, GenericQuestionData, QuestionData } from 'src/common/types/Question.type';
+import { QuestionGeneratorService } from 'src/question-generator/question-generator.service';
+import { RamDbService } from 'src/ram-db/ram-db.service';
+import { GenerationPatternDTO } from '../common/dto/generation-pattern.dto';
 
 @Injectable()
 export class QuestionService {
@@ -25,6 +29,8 @@ export class QuestionService {
         private readonly userService: UserService,
         private readonly themeService: ThemeService,
         private readonly gradeService: GradeService,
+        private readonly generator: QuestionGeneratorService,
+        private readonly ramDb: RamDbService
     ){}
 
     async find(id: string): Promise<QuestionEntity | null>{
@@ -132,20 +138,18 @@ export class QuestionService {
     //Добавить авто генерацию вопросов. Для этого описать паттерны генерации в бд. Доступ только для админов
     // 
     
-    async get(theme: string, passport: string){
+    async get(theme: string, passport: string): Promise<{list: DefaultQuestion[]}>{
         ['default', 'hard', 'othertype']
-
-
         const section: number | null = await this.themeService.getGradeSection(theme, passport);
 
         if((section !== 0 && !section)){
             throw new BadRequestException('Something went wrong');
         }
 
-        const easy = await (this.generateQuestionQuery(theme, this.questionRelation[section].easy,[{key: 'level',value: QuestionLevel.easy}])).getMany()
-        const middle = await (this.generateQuestionQuery(theme, this.questionRelation[section].middle, [{key: 'level',value: QuestionLevel.middle}])).getMany()
-        const hard = await (this.generateQuestionQuery(theme, this.questionRelation[section].hard, [{key: 'level',value: QuestionLevel.hard}])).getMany()
-        const order = await (this.generateQuestionQuery(theme, this.questionRelation[section].order, [{key: 'type',value: QuestionType.order}])).getMany()
+        const easy = await (this.generateQuestionQuery(theme, this.questionRelation[section].easy,[{key: 'level',value: QuestionLevel.easy}])).getMany() as DefaultQuestion[]
+        const middle = await (this.generateQuestionQuery(theme, this.questionRelation[section].middle, [{key: 'level',value: QuestionLevel.middle}])).getMany() as DefaultQuestion[]
+        const hard = await (this.generateQuestionQuery(theme, this.questionRelation[section].hard, [{key: 'level',value: QuestionLevel.hard}])).getMany() as DefaultQuestion[]
+        const order = await (this.generateQuestionQuery(theme, this.questionRelation[section].order, [{key: 'type',value: QuestionType.order}])).getMany() as DefaultQuestion[]
     
         const list = [...easy, ...middle, ...hard, ...order];
 
@@ -186,7 +190,15 @@ export class QuestionService {
     }
 
     async answer(answers: AnswerDTO, passport: string){
-        const question: QuestionEntity | null = await this.find(answers.questionID);
+        const genericTest = answers.questionID.split(':');
+        let question: QuestionData | null;
+        if(genericTest[0] === 'generic'){
+            question = await this.generator.checkAnswers(answers.questionID);
+        }
+        else{
+            question = await this.find(answers.questionID);
+        }
+
 
         if(!question){
             throw new BadRequestException('Wrong question');
@@ -194,6 +206,9 @@ export class QuestionService {
         
         const points = this.checkAnswers(question.type, answers.rightAnswers, question.rightAnswers, question.maxPoints);
         if(await this.gradeService.addPoints(points, question.theme.id, passport)){
+            if(question.id.split(':')[0] === 'generic'){
+                this.generator.deleteQuestion(question.id);
+            }
             return {points}
         }
         
@@ -211,14 +226,17 @@ export class QuestionService {
         await this.questionRepository.update({id: question.id}, {lastModeratorPassport: passport});
 
         //TODO: либо сделать свой сервис который будет сохранять состояние таймера с возможностью отключения при выполненом условии, либо установить либу для отложенных действий
-
-        setTimeout(async () => {
-            const moderationResult = (await (this.questionRepository.findOne({where: {id: question.id}, select: {isModerated: true}})))?.isModerated;
-            if(!moderationResult){
-                await this.questionRepository.update({id: question.id}, {lastModeratorPassport: null});
+        
+        this.ramDb.addEntry(`${question.id}:${passport}`, {}, {
+            func: async () => {
+                const moderationResult = (await (this.questionRepository.findOne({where: {id: question.id}, select: {isModerated: true}})))?.isModerated;
+                if(!moderationResult){
+                    await this.questionRepository.update({id: question.id}, {lastModeratorPassport: null});
+                }
+            },
+            time: this.ramDb.formatTime('7m')! //
             }
-
-        }, 60 * 7 * 1000);
+        );
 
         return {question}
     }
@@ -244,5 +262,26 @@ export class QuestionService {
 
         //TODO: add a cooldown for moderating based on level/moderated count;
         return;
+    }
+
+    
+    async createGenerationPattern(patternDto: GenerationPatternDTO, passport: string){
+        const {themeId} = patternDto;
+        
+        try{
+            const isThemeExist = !!(await this.themeService.isExist(themeId))
+
+            if(!isThemeExist) throw {message: 'Bad request'}
+
+            const isCreated = await this.generator.createPattern(patternDto);
+
+            if(!isCreated) throw {message: 'Bad request'}
+        }   
+        catch(err){
+            throw new BadRequestException('Something went wrong')
+        }
+
+        return; 
+        //TODO: PAttern validation(chat gpt), pattern checking - generator, try catch scheme in pattern reader, testing.
     }
 }

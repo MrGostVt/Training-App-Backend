@@ -9,7 +9,7 @@ type Data = {
 export class RamDbService {
     private data: Object = {};
 
-    addEntry(key: string, payload: any, timer: {func: () => {}, time: number} | null): boolean{
+    addEntry(key: string, payload: any, timer: {func: () => void, time: number} | null): boolean{
         if(!!this.data[key]){
             return false;
         }
@@ -21,6 +21,12 @@ export class RamDbService {
         this.data[key] = entry;
         return true;
     }
+
+    addGenericEntry(args: [string, any], timer: {func: () => {}, time: number}){
+        const [key, payload] = args;
+        return this.addEntry(key, payload, timer);
+    }
+
     deleteEntry(key: string): boolean{
         try{
             if(!!this.data[key].timer){
@@ -37,6 +43,25 @@ export class RamDbService {
         if(!this.data[key]){
             return undefined;
         }
-        return this.data[key].payload;
+        return {...this.data[key].payload};
+    }
+
+    //TimeFormat: '5m' '5h' '15s'
+    formatTime(time: string): number | null{
+        const measures = {
+            'm': 1000 * 60,
+            'h': 1000 * 60 * 60,
+            's': 1000,
+        };
+
+        const measure = time.split('').filter((val) => Object.keys(measures).includes(val))[0];
+
+        if(!measure){
+            return null;
+        }
+        const delay = (+time.split(measure)[0]) * measures[measure];
+
+
+        return Number.isNaN(delay)? null: delay;
     }
 }

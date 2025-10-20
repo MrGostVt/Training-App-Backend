@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { add, decorateInFunction, divide, multiply, randomNumber, subtract } from './pattern-functions/default.pattern-functions';
+import { AccessToActions, AccessToValues, add, Concat, decorateInFunction, divide, formData, GenNumberAnswers, GenQuestionID, log, multiply, randomNumber, subtract, Val } from './pattern-functions/default.pattern-functions';
 import { RamDbService } from 'src/ram-db/ram-db.service';
 import { of, timeout } from 'rxjs';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PatternsEntity } from './entity/patterns.entity';
+import { Repository, SelectQueryBuilder } from 'typeorm';
+import { QuestionLevel } from 'src/common/enums/QuestionLevel.enum';
+import { DefaultQuestion, GenericQuestionData, QuestionData } from 'src/common/types/Question.type';
+import { QuestionType } from 'src/common/enums/QuestionType.enum';
+import { GenerationPatternDTO } from 'src/common/dto/generation-pattern.dto';
 type InterObject = {
     payload: any[],
     funcs: any[],
@@ -11,8 +18,9 @@ type InterObject = {
 export class QuestionGeneratorService {
     'rnd=1=1000+rnd=12=13|rnd=2=10+rnd=2=10'
     private readonly separator = '|';
-    private readonly smallSeperator = ',';
+    private readonly smallSeparator = ',';
     private readonly equality = '=';
+    private readonly actionSeparator = '@';
     private readonly patterns = {
         'rnd': randomNumber,
         'timeout': timeout,
@@ -23,7 +31,17 @@ export class QuestionGeneratorService {
         'sendTo': {},
         'claim': {},
         'user': {},
-        'return': {},
+        'setTitle': (args: [null, any], question) => {formData(['title',args[1]], question)},
+        'setAnswers': (args: [null, any], question) => {formData(['answers',args[1]], question)},
+        'setRightAnswers': (args: [null, any], question) => {formData(['rightAnswers',args[1]], question)},
+        'formData': formData,
+        'log': log,
+        'myValues': AccessToValues,
+        'myActions': AccessToActions,
+        'val': Val,
+        'concat': Concat,
+        'genNumAnswers': GenNumberAnswers,
+        'genQuestionId': GenQuestionID,
     };
     private readonly defaultPatterns = {
         '+': add,
@@ -33,28 +51,71 @@ export class QuestionGeneratorService {
     };
 
     constructor(
-        private readonly ramDbService: RamDbService
+        private readonly ramDbService: RamDbService,
+        @InjectRepository(PatternsEntity) private readonly patternsRepository: Repository<PatternsEntity>,
     ){
         this.patterns.save = ramDbService.addEntry;
         this.patterns.delete = ramDbService.deleteEntry;
         this.patterns.find = ramDbService.findEntry;
     }
 
-    private chunkArray(arr: any[], size: number): any[] {
-        let result: any[] = [];
-        for (let i = 0; i < arr.length; i += size) {
-          result.push(arr.slice(i, i + size));
+    segmentPattern(pattern: string): string[] | null{
+        try{
+            const funcSections = pattern.split(this.separator);
+            let logicalSegments: any[] = [];
+
+            for(let section of funcSections){
+                const separated = section.split(this.smallSeparator);
+    
+                for(let sep of separated){
+                    const pattern = this.choseAction(sep);
+    
+                    const actions = this.readActions(pattern.payload[0]); //payload: [ 'log=myValues=0=0=myValues=0=1' ], funcs: [] }
+                                                                         //payload: [ 'myValues=0=0', 'myValues=0=1' ], funcs: [ '/' ] }
+                    logicalSegments = [...logicalSegments, ...actions.payload];                    
+                }
+            }
+
+            return logicalSegments;
         }
-        return result;
+        catch(err){
+            return null;
+        }
     }
 
-    readActions(section: string): InterObject{
+    private choseAction(pattern: string): InterObject{
+        const object: InterObject = {
+            payload: [],
+            funcs: []
+        }
+        const indexOfStart = pattern.indexOf(this.actionSeparator)+1;
+        const indexOfEnd = pattern.lastIndexOf(this.actionSeparator);
+    
+        if(indexOfStart == 0){
+            object.payload.push(pattern);
+            return object;
+        }
+    
+        const actions = pattern.slice(indexOfStart, indexOfEnd);
+        
+        const chosen = Math.round(Math.random() * (actions.length-1));
+        const newPattern = pattern.split(`${this.actionSeparator}${actions}${this.actionSeparator}`).join(actions[chosen]);
+    
+        object.funcs.push(actions[chosen]);
+        object.payload.push(newPattern);
+    
+        return object;
+    }
+
+    private readActions(section: string): InterObject{
         const object: InterObject = {
             payload: [],
             funcs: [],
         }
         let remain = section;
-        const order = section.split('').filter(val => Object.keys(this.defaultPatterns).includes(val));
+        const order = section.split('').filter(
+            (val, i, arr) => Object.keys(this.defaultPatterns).includes(val) && arr[i-1] !== this.equality
+        );
         
         for (const pattern of order) {
             const [action] = remain.split(pattern);
@@ -68,7 +129,7 @@ export class QuestionGeneratorService {
         return object;
     }
 
-    readFunctions(actions: string[]): InterObject{
+    private readFunctions(actions: string[]): InterObject{
         const object: InterObject = {
             payload: [],
             funcs: [],
@@ -77,7 +138,7 @@ export class QuestionGeneratorService {
         let remain = actions;
     
         for(let section of remain){
-            const parts = section.split('=');
+            const parts = section.split(this.equality);
             const funcs = parts.filter(val => Object.keys(this.patterns).includes(val));
             let funcId = 0;
             let tempArgs: any[] = [];
@@ -122,7 +183,6 @@ export class QuestionGeneratorService {
                     break;
                 }
             }
-    
             object.payload.push(args);
             object.funcs.push(funcs);
         }
@@ -130,37 +190,56 @@ export class QuestionGeneratorService {
         return object;
     }
 
-    runFunctions(functions: InterObject): any[]{
+    private runFunctions(functions: InterObject, interValues: any[], interActions: any[], dataToReturn: any): any[]{
         let results: any[] = [];
         const args = functions.payload;
         const funcs = functions.funcs;
 
-
         for(let j = 0; j < funcs.length; j++){
-            const lastValues: any[] = [];
+            const lastValues: any = [];
 
             for(let i = funcs[j].length-1; i >= 0; i--){
                 if(args[j][i].length !== 2 || args[j][i].includes(null)){
                     switch(args[j][i].length){
                         case 2: args[j][i][0] = lastValues.shift(); break;
                         case 1: args[j][i].push(lastValues.shift()); break;
-                        case 0: args[j][i].push(lastValues.shift()); args[j][i].push(lastValues.shift()); break;
+                        case 0: 
+                            const arg2 = lastValues.shift(); 
+                            const arg1 = lastValues.shift(); 
+                            args[j][i].push(arg1);
+                            args[j][i].push(arg2);
+                            break;
                         default: throw new Error("Pattern broken");
                     }
                 }
 
                 const functionKey = funcs[j][i];
-                const result = this.patterns[functionKey](args[j][i]);
+                let result: any;
+                switch(functionKey){
+                    case 'formData':
+                        this.patterns[functionKey](args[j][i], dataToReturn);
+                        break;
+                    case 'myActions':
+                        result = this.patterns[functionKey](args[j][i], interActions);
+                        break;
+                    case 'myValues': 
+                        result = this.patterns[functionKey](args[j][i], interValues);
+                        break;
+                    default:
+                        result = this.patterns[functionKey](args[j][i]);
+                        break;
+                }
 
                 lastValues.push(result);
             }
+
             results = [...results, ...lastValues];
         }
 
         return results;
     }
 
-    runActions(funcs: string[], values: any[]): any[]{
+    private runActions(funcs: string[], values: any[]): any[]{
         let actions: any[] = [...funcs];
         const loverOrder: any[] = [];
         const upperOrder: any[] = [];
@@ -183,7 +262,7 @@ export class QuestionGeneratorService {
             const actionResult = this.defaultPatterns[actions[index]](args);
             values[index] = actionResult;
             actions[index] = null;
-            console.log(actionResult);
+            // console.log(actionResult);
             order.forEach((val, i) => {
                 if(val > index){
                     order[i]--;
@@ -198,26 +277,151 @@ export class QuestionGeneratorService {
         return values;
     }
 
-    'rnd=1=1000|rnd=1=1000|rnd=-1000=1000'
-    async readPattern(pattern: string){
+    async readPattern(patternInfo: PatternsEntity, passport?: string): Promise<DefaultQuestion | null>{
+        const pattern = patternInfo.pattern;
+        const questionData = {
+            id: GenQuestionID(...(passport ? [passport] : [])),
+            level: patternInfo.level,
+            maxPoints: patternInfo.maxPoints,
+            type: patternInfo.type,
+        };
+
+        const tempData: GenericQuestionData = {
+            answers: [],
+            rightAnswers: [],
+            title: ''
+        };
         const funcSections = pattern.split(this.separator);
         const interValues: any[] = [];
+        const interActions: any[] = [];
 
         for(let section of funcSections){
-            const separated = section.split(this.smallSeperator);
+            const separated = section.split(this.smallSeparator);
             const values: any[] = [];
+            let actionFuncs: any[] = [];
 
             for(let sep of separated){
-                const actions = this.readActions(sep);
-                const functions = this.readFunctions(actions.payload);
-                
-                const results = this.runFunctions(functions);
-                const final = this.runActions(actions.funcs, results);
+                const pattern = this.choseAction(sep);
 
+                const actions = this.readActions(pattern.payload[0]);
+                const functions = this.readFunctions([...actions.payload]);
+                
+                const results = this.runFunctions(functions, interValues, interActions, tempData);
+                const final = this.runActions([...actions.funcs], [...results])[0];
+
+                console.log(`final: ${final}`)
+                if(final === 0 || !!final && !Number.isNaN(final)){
+                    values.push(final);
+                }
+                if(actions.funcs.length !== 0 && actionFuncs.length === 0){
+                    actionFuncs = [...actions.funcs]
+                }
             }
 
+            interActions.push(actionFuncs);
             interValues.push(values);
         }
 
+        const dataToReturn: DefaultQuestion = {...questionData, ...tempData};
+        this.ramDbService.addEntry(dataToReturn.id, {...tempData, patternId: patternInfo.id},
+            {func: () => {this.ramDbService.deleteEntry(dataToReturn.id);}, time: this.ramDbService.formatTime('15m')!});
+
+        return dataToReturn;
+    }
+
+    async checkAnswers(id: string): Promise<QuestionData | null>{
+        const entry = this.ramDbService.findEntry(id) as GenericQuestionData;
+        if(!entry){
+            return null;
+        }
+        
+        const pattern: PatternsEntity | null = await this.patternsRepository.findOne({where: {id: entry.patternId}});
+        if(!pattern){
+            return null;
+        }
+        const {title, answers, rightAnswers, theme, type, level, maxPoints} = {...entry, ...pattern}        
+
+        return {id, title, answers, rightAnswers, theme, type, level, maxPoints} as QuestionData;
+    }
+
+    deleteQuestion(id: string): Boolean{
+        return this.ramDbService.deleteEntry(id);
+    }
+
+    generateQuestionQuery(theme: string, limit: number, params: [{key: string, value: any}]): SelectQueryBuilder<PatternsEntity>{
+        const query = this.patternsRepository.createQueryBuilder('pattern')
+            .where('pattern.themeId = :themeId', { themeId: theme })
+        for (const param of params) {
+            query.andWhere(`pattern.${param.key} = :${param.key}`, {[param.key]: param.value})
+        }
+
+        query.orderBy('RANDOM()')
+            .limit(limit)
+        return query;
+    }
+
+    async getQuestion(themeId: string, count: number, level: QuestionLevel, passport?: string): Promise<DefaultQuestion[] | null>{
+        const patterns = await (this.generateQuestionQuery(themeId, count, [{key: 'level', value: level}])).getMany();
+
+        if(patterns.length === 0){
+            return [];
+        }
+        if(patterns.length !== count){
+            const diff = count - patterns.length;
+
+            for(let i = 0; i < diff; i++){
+                const rndIndex = Math.ceil(Math.random() * diff);
+                patterns.push(patterns[rndIndex]);
+            }
+        }        
+
+        const questions: (DefaultQuestion | null)[] = await Promise.all(patterns.map((val) => {return this.readPattern(val, passport)}));
+        //Подумать, как лучше обыграть падение генератора на некоторых вопросах
+        const nonNullQuestions: DefaultQuestion[] = questions.filter(
+            (q) => q !== null
+        );
+        
+        if(nonNullQuestions.length !== questions.length){
+            return null;
+        }
+
+        
+        return nonNullQuestions;
+    }
+
+    async testPattern(pattern: PatternsEntity){
+        try{
+            const result = await this.readPattern(pattern);
+
+            if(!result || result.answers.length < result.rightAnswers.length 
+                || result.rightAnswers.length < 1 || result.title.length === 0){
+                throw 'Bad pattern'
+            }
+        }
+        catch(err){
+            return false;
+        }
+
+        return true;
+    }
+
+    async createPattern(patternData: GenerationPatternDTO): Promise<Boolean>{
+        const {themeId, type, maxPoints, level, pattern, } = patternData;
+
+        const tempEntity = this.patternsRepository.create({
+            theme: {id: themeId},
+            type,
+            maxPoints,
+            level,
+            pattern
+        });
+
+        const isWork = await this.testPattern(tempEntity);
+
+        if(isWork){
+            this.patternsRepository.save(tempEntity);
+            return true;
+        }
+        return false; 
     }
 }

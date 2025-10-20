@@ -4,13 +4,13 @@ import { ThemeEntity } from "src/theme/entity/theme.entity";
 import { UserEntity } from "src/user/entity/user.entity";
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
-@Entity({name: 'Question'})
-export class QuestionEntity{
+@Entity({name: 'Question_Generator_Patterns'})
+export class PatternsEntity{
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({unique: true})
-    title: string; 
+    @Column({unique: true, type:'varchar'})
+    pattern: string; 
     
     @Column({type: 'enum', enum: QuestionLevel, enumName: 'QuestionLevel', default: QuestionLevel.easy})
     level: QuestionLevel;
@@ -21,26 +21,8 @@ export class QuestionEntity{
     @Column({type: 'enum', enum: QuestionType, enumName: 'QuestionType', default: QuestionType.default})
     type: QuestionType;
 
-    @Column({type: 'varchar', array: true})
-    answers: string[];
-    
-    @Column({name: 'right_answers', type: 'varchar', array: true})
-    rightAnswers: number[];
-
-    @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.questions)
+    @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.generationPatterns)
     theme: ThemeEntity;
-
-    @Column({name: 'is_moderated', type: 'boolean', default: false})
-    isModerated: boolean;
-
-    @ManyToOne(() => UserEntity, (user: UserEntity) => user.createdQuestions)
-    author: UserEntity;
-
-    @ManyToOne(() => UserEntity, (user: UserEntity) => user.moderatedQuestions, {nullable: true})
-    moderator: UserEntity;
-
-    @Column({name: 'last_moderator_passport', type: 'varchar', nullable: true})
-    lastModeratorPassport: string | null;
 
     @CreateDateColumn()
     createdAt: Date;

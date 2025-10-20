@@ -20,6 +20,12 @@ export class ThemeService {
         return theme;
     } 
 
+    async isExist(themeId: string): Promise<Boolean> {
+        const isExist = !!(await this.themeRepository.findOne({where:{id: themeId}, select: {id: true}}));
+
+        return isExist;
+    }
+
     async create(theme: ThemeDTO){
         const {title} = theme;
 
