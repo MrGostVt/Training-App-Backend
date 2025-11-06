@@ -1,6 +1,7 @@
 import { GradeEntity } from "src/grade/entity/grade.entity";
 import { QuestionEntity } from "src/question/entity/question.entity";
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { ThemeEntity } from "src/theme/entity/theme.entity";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 
 @Entity({name: 'User'})
@@ -16,6 +17,9 @@ export class UserEntity{
 
     @OneToMany(() => QuestionEntity, (question: QuestionEntity) => question.moderator)
     moderatedQuestions: QuestionEntity[];
+
+    @ManyToOne(() => ThemeEntity, (theme) => theme.activeUsers)
+    chosenTheme?: ThemeEntity;
 
     @CreateDateColumn()
     createdAt: Date

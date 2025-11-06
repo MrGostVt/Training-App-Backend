@@ -36,7 +36,7 @@ export class QuestionController {
     @Auth()
     @Access(AccessLevel.Default)
     @Post('answer')
-    async answer(@Body() answers: AnswerDTO, @User('passport') passport: string,){
+    async answer(@Body() answers: AnswerDTO, @User('passport') passport: string){
        return await this.questionService.answer(answers, passport);
     }
 

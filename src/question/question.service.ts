@@ -85,7 +85,7 @@ export class QuestionService {
 
             await this.questionRepository.save(questionEntity);
 
-            return true;
+            return;
         }
         catch(err){
             throw new BadRequestException("Something went wrong");

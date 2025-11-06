@@ -15,14 +15,18 @@ export class AuthorizeEntity{
     @Column({})
     hash: string;
 
+    // @Column({
+    //     name: 'access_level', 
+    //     enum: AccessLevel, 
+    //     enumName: 'AccessLevel', 
+    //     default: AccessLevel.Default,
+    //     type: 'enum',
+    // })
+
     @Column({
-        name: 'access_level', 
-        enum: AccessLevel, 
-        enumName: 'AccessLevel', 
-        default: AccessLevel.Default,
-        type: 'enum',
+        name: 'is_admin',
     })
-    accessLevel: AccessLevel;
+    isAdmin: boolean;
 
     @CreateDateColumn()
     createdAt: Date

@@ -5,7 +5,6 @@ import { Access } from 'src/common/decorators/access.decorator';
 import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
 import { ThemeDTO } from './dto/theme.dto';
 import { User } from 'src/common/decorators/user.decorator';
-import { GenerationPatternDTO } from '../common/dto/generation-pattern.dto';
 
 
 @Controller('theme')
@@ -21,7 +20,7 @@ export class ThemeController {
 
   @Auth()
   @Access(AccessLevel.Default)
-  @Post('get')
+  @Get('get')
   async get(@User('passport') passport: string){
     return await this.themeService.get(passport);
   }

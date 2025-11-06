@@ -8,9 +8,8 @@ type Options = {
 
 
 export function IsContains(content: Content[], validationOptions: Options = {minQty: [], allRequired: true}){
-    const missingTypes: string[] = [...content];
-
     return function(object: Object, propertyName: string){
+        let missingTypes: string[]
         registerDecorator({
             name: 'IsContainType',
             target: object.constructor,
@@ -18,6 +17,7 @@ export function IsContains(content: Content[], validationOptions: Options = {min
             constraints: content,
             validator: {
                 async validate(value: any, args: ValidationArguments): Promise<boolean>{
+                    missingTypes = [...args.constraints];
                     const content = args.constraints;
                     
                     
@@ -56,7 +56,7 @@ export function IsContains(content: Content[], validationOptions: Options = {min
                 defaultMessage(args: ValidationArguments): string{
                     let types: string = '';
                     missingTypes.forEach((val, i, array) => { 
-                        const res = `${val}${array.length-1 !== i? ', ': ';'}`;
+                        const res = `${validationOptions.minQty[i]} ${val}${array.length-1 !== i? ', ': ';'}`;
                         types += res;
                     });
                     return `$property must containt: ${types}`;

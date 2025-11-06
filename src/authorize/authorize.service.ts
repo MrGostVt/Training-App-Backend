@@ -11,6 +11,7 @@ import { AuthDataDTO } from './dto/authdata.dto';
 import { TokenData } from './type/tokenData.type';
 import { ConfigService } from '@nestjs/config';
 import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
+import { access } from 'fs';
 
 //TODO: Обновить сервис и сущность так, что бы можно было сохранять текущую занятость юзера (начал ли он прохождение теста или нет)
 //      Возможно использовать редис.
@@ -30,22 +31,28 @@ export class AuthorizeService {
 
         const isExist: Boolean = !!(await this.authRepository.findOne({where: {userName}}));
         if(isExist) throw new ConflictException("User already exist");
-        
+        console.log("Existing check")
+
         const hash = await this.register(password);
 
         const newUser: UserEntity | null = await this.userService.createUser();
+
         if(!newUser){
             throw new BadRequestException('Something went wrong');
         }
+        
+        console.log("new user data check")
 
         try{
             const userAuth: AuthorizeEntity = this.authRepository.create({
                 userName,
                 passport: newUser.id,
                 hash,
-                accessLevel: isAdmin? AccessLevel.Admin: AccessLevel.Default,
+                isAdmin: !!isAdmin
             });
             await this.authRepository.save(userAuth);
+
+            console.log('saving check')
             return await this.authByPassword({password, userName}, device);
         }
         catch{
@@ -90,17 +97,29 @@ export class AuthorizeService {
 
         return {token: jwt};
     }
-    async authByTokenPayload(payload: TokenData, device: string): Promise<AuthorizeEntity>{
-        let user: AuthorizeEntity | null;
+    async authByTokenPayload(payload: TokenData, device: string): Promise<AuthorizeEntity & {accessLevel: AccessLevel}>{
+        let user: (AuthorizeEntity & {accessLevel: AccessLevel}) | null;
 
         try{
-            user = await this.authRepository.findOne({where: {id: payload?.id}});
-            if(!user) throw "Not found exception";
+            let userData = (await this.authRepository.findOne({where: {id: payload?.id}}));
+
+            if(!userData) throw "Not found exception";
             if(payload.device != device) {throw "Wrong device"}
 
+            const accessLevel =  userData.isAdmin? AccessLevel.Admin: await this.userService.checkUserAccessLevel(userData.passport);
+
+            
+            if(accessLevel === undefined){
+                throw 'Wrong access level'
+            }
+
+            user = {
+                ...userData, 
+                accessLevel,
+            }
         }
-        catch{
-            throw new UnauthorizedException("Unauthorized");
+        catch(err){
+            throw new UnauthorizedException(`Unauthorized: ${err}`);
         }
 
         return user;

@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthenticatedRequest } from '../types/AuthenticatedRequest.interfact';
 import { AccessLevel } from '../enums/AccessLevel.enum';
@@ -18,6 +18,10 @@ export class AccessGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    return requiredRoles.some((role) => user.accessLevel >= role);
+    const isHasAccess = requiredRoles.some((role) => user.accessLevel >= role);
+    if(!isHasAccess){
+      throw new ForbiddenException("Access denied");
+    }
+    return isHasAccess;
   }
 }
