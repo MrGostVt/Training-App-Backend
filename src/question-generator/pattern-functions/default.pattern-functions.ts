@@ -33,7 +33,7 @@ export const formData = (args: [string, any], returnData: object) => {
 
 export const log = (args: Arguments) => {
     const date = new Date();
-    console.log(`${date.getHours}:${date.getMinutes}:${date.getSeconds()}| ${args}`);
+    console.log(`${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}| ${args}`);
 }
 
 export const AccessToValues = (args: Arguments, values: any[]) => {
@@ -57,13 +57,22 @@ export const Concat = (args: Arguments) => {
 export const GenNumberAnswers = (args: Arguments) => {
     const [count, answer] = args.map(val => parseInt(val));
     const answers: any[] = [];
+    const answerIndex = randomNumber([0,count]);
     for(let i = 0; i < count; i++){
+        if(answerIndex === i){
+            answers.push(answer);
+            continue;
+        }
+
         let rnd = randomNumber([-30, 30]);
         if(answers.indexOf(rnd) !== -1){
             rnd += randomNumber([-31, 33]);
         }
         answers.push(answer + rnd);
     }
+
+    console.log(`answer: ${answer}`)
+    console.log(answers);
     return answers;
 }
 

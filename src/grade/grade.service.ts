@@ -33,4 +33,12 @@ export class GradeService {
 
         return grade;
     }
+
+    async getGrade(passport: string, themeId: string): Promise<number | undefined>{
+        const grade: GradeEntity | null = await this.gradeRepository.findOne({
+            where: {theme: {id: themeId}, user: {id: passport}},
+        })
+
+        return grade?.grade;
+    }
 }

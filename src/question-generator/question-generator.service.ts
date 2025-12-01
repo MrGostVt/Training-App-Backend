@@ -9,6 +9,7 @@ import { QuestionLevel } from 'src/common/enums/QuestionLevel.enum';
 import { DefaultQuestion, GenericQuestionData, QuestionData } from 'src/common/types/Question.type';
 import { QuestionType } from 'src/common/enums/QuestionType.enum';
 import { GenerationPatternDTO } from 'src/common/dto/generation-pattern.dto';
+import { isArray } from 'class-validator';
 type InterObject = {
     payload: any[],
     funcs: any[],
@@ -17,6 +18,7 @@ type InterObject = {
 @Injectable()
 export class QuestionGeneratorService {
     'rnd=1=1000+rnd=12=13|rnd=2=10+rnd=2=10'
+    "rnd=25=50,rnd=1=25|myValues=0=0@+-@myValues=0=1|setTitle==concat=myValues=0=0=concat=myActions=1=0=myValues=0=0|setAnswers==genNumAnswers=4=myValues=1=0"
     private readonly separator = '|';
     private readonly smallSeparator = ',';
     private readonly equality = '=';
@@ -31,9 +33,32 @@ export class QuestionGeneratorService {
         'sendTo': {},
         'claim': {},
         'user': {},
-        'setTitle': (args: [null, any], question) => {formData(['title',args[1]], question)},
+        'setTitle': (args: [null, any], question) => {
+            formData(['title',args[1]], question)
+            console.log('SETTITLE')
+            console.log(question);
+        },
         'setAnswers': (args: [null, any], question) => {formData(['answers',args[1]], question)},
-        'setRightAnswers': (args: [null, any], question) => {formData(['rightAnswers',args[1]], question)},
+        'setRightAnswers': (args: [null, any], question) => {
+            const [temp, answer] = args;
+
+            // if(isArray(answer)){
+            //     for()
+            // }
+
+            const answers = question['answers'];
+            if(!answers){
+                throw 'Answers must be setted earlier then rightAnswers';
+            }
+
+            const rightAnswers = [answers.indexOf(answer)];
+
+            if(rightAnswers[0] === -1){
+                throw 'Right answer must exist in answers array';
+            }
+
+            formData(['rightAnswers', rightAnswers], question)
+        },
         'formData': formData,
         'log': log,
         'myValues': AccessToValues,
@@ -216,6 +241,9 @@ export class QuestionGeneratorService {
                 const functionKey = funcs[j][i];
                 let result: any;
                 switch(functionKey){
+                    case 'setRightAnswers':
+                    case 'setAnswers':
+                    case 'setTitle':
                     case 'formData':
                         this.patterns[functionKey](args[j][i], dataToReturn);
                         break;
@@ -305,11 +333,11 @@ export class QuestionGeneratorService {
 
                 const actions = this.readActions(pattern.payload[0]);
                 const functions = this.readFunctions([...actions.payload]);
-                
+                console.log(`functions: ${functions.funcs}`)
+
                 const results = this.runFunctions(functions, interValues, interActions, tempData);
                 const final = this.runActions([...actions.funcs], [...results])[0];
 
-                console.log(`final: ${final}`)
                 if(final === 0 || !!final && !Number.isNaN(final)){
                     values.push(final);
                 }
@@ -376,6 +404,8 @@ export class QuestionGeneratorService {
         }        
 
         const questions: (DefaultQuestion | null)[] = await Promise.all(patterns.map((val) => {return this.readPattern(val, passport)}));
+
+        
         //Подумать, как лучше обыграть падение генератора на некоторых вопросах
         const nonNullQuestions: DefaultQuestion[] = questions.filter(
             (q) => q !== null
@@ -392,7 +422,7 @@ export class QuestionGeneratorService {
     async testPattern(pattern: PatternsEntity){
         try{
             const result = await this.readPattern(pattern);
-
+            console.log(result);
             if(!result || result.answers.length < result.rightAnswers.length 
                 || result.rightAnswers.length < 1 || result.title.length === 0){
                 throw 'Bad pattern'
@@ -406,10 +436,10 @@ export class QuestionGeneratorService {
     }
 
     async createPattern(patternData: GenerationPatternDTO): Promise<Boolean>{
-        const {themeId, type, maxPoints, level, pattern, } = patternData;
+        const {theme, type, maxPoints, level, pattern, } = patternData;
 
         const tempEntity = this.patternsRepository.create({
-            theme: {id: themeId},
+            theme: {id: theme},
             type,
             maxPoints,
             level,
@@ -417,6 +447,7 @@ export class QuestionGeneratorService {
         });
 
         const isWork = await this.testPattern(tempEntity);
+        console.log(`pattern running, result: ${isWork}`);
 
         if(isWork){
             this.patternsRepository.save(tempEntity);
@@ -425,3 +456,4 @@ export class QuestionGeneratorService {
         return false; 
     }
 }
+//25.11 - Нужно проверить работу генерации по паттерну, проблемы с тестовым паттерном: answers, rightAnswers, title, 

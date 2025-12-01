@@ -5,6 +5,7 @@ import { DataSource, Repository } from 'typeorm';
 import { ThemeDTO } from './dto/theme.dto';
 import { UserEntity } from 'src/user/entity/user.entity';
 import { GradeService } from 'src/grade/grade.service';
+import { GradeEntity } from 'src/grade/entity/grade.entity';
 
 
 @Injectable()
@@ -73,24 +74,20 @@ export class ThemeService {
         return userThemes;
     }
 
-    async getGrade( theme: string, passport: string): Promise<number | undefined>{
-        const grade: number | undefined = (await this.themeRepository.findOne({where: {id: theme, grade: {user: {id: passport}}}, select: {grade: {grade: true}}}))?.grade.grade
-
-        return grade;    
-    }
-
     async getGradeSection(theme: string, passport: string): Promise<number | null>{
-        const themeData = await this.find(theme);
-        const grade: number | undefined = await this.getGrade(theme, passport);
 
-        if(!themeData || !grade){
+        const themeData = await this.find(theme);
+        const grade: number | undefined = await this.gradeService.getGrade(passport, theme);
+
+        if(!themeData || grade === undefined){
             return null;
         }
-
         
         const gradeSection = [themeData.maxPoints * 0.2, themeData.maxPoints * 0.5, themeData.maxPoints * 0.84];
 
-        const section: number = gradeSection.findIndex((val, index, obj) => (obj[index-1] | 0) < grade && grade < val);
+        const section: number = gradeSection.findIndex((val, index, obj) => (obj[index-1] | 0) <= grade && grade < val);
+
+        console.log(`Section on gradeSection calculating: ${section}`)
 
         return section === -1? gradeSection.length-1: section;
     }
@@ -130,6 +127,7 @@ export class ThemeService {
     }
 
     async getAll(){
+        //Добавить выборку, возвращать всё в виде одноуровнего объекта.
         return await this.themeRepository.find();
     }
 }

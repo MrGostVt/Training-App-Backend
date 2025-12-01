@@ -23,6 +23,7 @@ export class QuestionController {
     }
 
     //Find by theme & level & cost and add paging & random choose
+    //Комбинатор вопросов починить
     @Auth()
     @Access(AccessLevel.Default)
     @Get('get')

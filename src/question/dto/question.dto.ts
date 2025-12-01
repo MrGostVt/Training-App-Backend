@@ -6,7 +6,7 @@ import { IsRightCorrespondsToAnswers } from "src/common/validators/right-answer.
 export class QuestionDTO{
     
     @IsString()
-    @Length(15, 150)
+    @Length(5, 150)
     title: string;
 
     @IsEnum(QuestionLevel)
