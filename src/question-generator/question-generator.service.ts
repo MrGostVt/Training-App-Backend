@@ -10,6 +10,7 @@ import { DefaultQuestion, GenericQuestionData, QuestionData } from 'src/common/t
 import { QuestionType } from 'src/common/enums/QuestionType.enum';
 import { GenerationPatternDTO } from 'src/common/dto/generation-pattern.dto';
 import { isArray } from 'class-validator';
+import { debug } from 'console';
 type InterObject = {
     payload: any[],
     funcs: any[],
@@ -35,8 +36,6 @@ export class QuestionGeneratorService {
         'user': {},
         'setTitle': (args: [null, any], question) => {
             formData(['title',args[1]], question)
-            console.log('SETTITLE')
-            console.log(question);
         },
         'setAnswers': (args: [null, any], question) => {formData(['answers',args[1]], question)},
         'setRightAnswers': (args: [null, any], question) => {
@@ -57,7 +56,7 @@ export class QuestionGeneratorService {
                 throw 'Right answer must exist in answers array';
             }
 
-            formData(['rightAnswers', rightAnswers], question)
+            formData(['rightAnswers', rightAnswers], question);
         },
         'formData': formData,
         'log': log,
@@ -323,38 +322,44 @@ export class QuestionGeneratorService {
         const interValues: any[] = [];
         const interActions: any[] = [];
 
-        for(let section of funcSections){
-            const separated = section.split(this.smallSeparator);
-            const values: any[] = [];
-            let actionFuncs: any[] = [];
 
-            for(let sep of separated){
-                const pattern = this.choseAction(sep);
-
-                const actions = this.readActions(pattern.payload[0]);
-                const functions = this.readFunctions([...actions.payload]);
-                console.log(`functions: ${functions.funcs}`)
-
-                const results = this.runFunctions(functions, interValues, interActions, tempData);
-                const final = this.runActions([...actions.funcs], [...results])[0];
-
-                if(final === 0 || !!final && !Number.isNaN(final)){
-                    values.push(final);
+        try{
+            for(let section of funcSections){
+                const separated = section.split(this.smallSeparator);
+                const values: any[] = [];
+                let actionFuncs: any[] = [];
+    
+                for(let sep of separated){
+                    const pattern = this.choseAction(sep);
+    
+                    const actions = this.readActions(pattern.payload[0]);
+                    const functions = this.readFunctions([...actions.payload]);
+                    console.log(`functions: ${functions.funcs}`)
+    
+                    const results = this.runFunctions(functions, interValues, interActions, tempData);
+                    const final = this.runActions([...actions.funcs], [...results])[0];
+    
+                    if(final === 0 || !!final && !Number.isNaN(final)){
+                        values.push(final);
+                    }
+                    if(actions.funcs.length !== 0 && actionFuncs.length === 0){
+                        actionFuncs = [...actions.funcs]
+                    }
                 }
-                if(actions.funcs.length !== 0 && actionFuncs.length === 0){
-                    actionFuncs = [...actions.funcs]
-                }
+    
+                interActions.push(actionFuncs);
+                interValues.push(values);
             }
-
-            interActions.push(actionFuncs);
-            interValues.push(values);
+    
+            const dataToReturn: DefaultQuestion = {...questionData, ...tempData};
+            this.ramDbService.addEntry(dataToReturn.id, {...tempData, patternId: patternInfo.id},
+                {func: () => {this.ramDbService.deleteEntry(dataToReturn.id);}, time: this.ramDbService.formatTime('15m')!});
+    
+            return dataToReturn;
         }
-
-        const dataToReturn: DefaultQuestion = {...questionData, ...tempData};
-        this.ramDbService.addEntry(dataToReturn.id, {...tempData, patternId: patternInfo.id},
-            {func: () => {this.ramDbService.deleteEntry(dataToReturn.id);}, time: this.ramDbService.formatTime('15m')!});
-
-        return dataToReturn;
+        catch(err){
+            throw `Generation error: ${err.message}`
+        }
     }
 
     async checkAnswers(id: string): Promise<QuestionData | null>{
@@ -389,8 +394,8 @@ export class QuestionGeneratorService {
     }
 
     async getQuestion(themeId: string, count: number, level: QuestionLevel, passport?: string): Promise<DefaultQuestion[] | null>{
-        const patterns = await (this.generateQuestionQuery(themeId, count, [{key: 'level', value: level}])).getMany();
-
+        let patterns = (await (this.generateQuestionQuery(themeId, count, [{key: 'level', value: level}])).getMany());
+        
         if(patterns.length === 0){
             return [];
         }
@@ -398,12 +403,25 @@ export class QuestionGeneratorService {
             const diff = count - patterns.length;
 
             for(let i = 0; i < diff; i++){
-                const rndIndex = Math.ceil(Math.random() * diff);
+                const rndIndex = Math.floor(Math.random() * diff);
                 patterns.push(patterns[rndIndex]);
             }
         }        
 
-        const questions: (DefaultQuestion | null)[] = await Promise.all(patterns.map((val) => {return this.readPattern(val, passport)}));
+        console.log(`PATTERNS LENGTH`);
+        console.log(patterns.length);
+
+        const questions: (DefaultQuestion | null)[] = await Promise.all(patterns.map(async (val) => {
+            try{
+                console.log(`Read pattern: `)
+                console.log(val.pattern)
+                return await this.readPattern(val, passport)
+            }
+            catch(err){
+                console.log(`GetQuestions---${err.message}`);
+                return null;
+            }
+        }));
 
         
         //Подумать, как лучше обыграть падение генератора на некоторых вопросах
@@ -425,10 +443,11 @@ export class QuestionGeneratorService {
             console.log(result);
             if(!result || result.answers.length < result.rightAnswers.length 
                 || result.rightAnswers.length < 1 || result.title.length === 0){
-                throw 'Bad pattern'
+                throw 'Bad pattern';
             }
         }
         catch(err){
+            console.log(`TestPattern---${err.message}`);
             return false;
         }
 
@@ -447,7 +466,7 @@ export class QuestionGeneratorService {
         });
 
         const isWork = await this.testPattern(tempEntity);
-        console.log(`pattern running, result: ${isWork}`);
+        console.log(`Pattern is running, result: ${isWork}`);
 
         if(isWork){
             this.patternsRepository.save(tempEntity);
@@ -456,4 +475,6 @@ export class QuestionGeneratorService {
         return false; 
     }
 }
-//25.11 - Нужно проверить работу генерации по паттерну, проблемы с тестовым паттерном: answers, rightAnswers, title, 
+//01.12 - Проблемы с генерацией, undefined в theme, 
+//Проверить AnswerGeneration. Подключить фронт для удобного тестирования.
+//02.12 - Протестить ответы, модерацию, левелинг, доступ по уровню.
