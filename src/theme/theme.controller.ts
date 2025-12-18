@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode } from '@nestjs/common';
 import { ThemeService } from './theme.service';
 import { Auth } from 'src/common/decorators/auth.decorator';
 import { Access } from 'src/common/decorators/access.decorator';
@@ -14,6 +14,7 @@ export class ThemeController {
   @Auth()
   @Access(AccessLevel.Admin)
   @Post('create')
+  @HttpCode(201)
   async create(@Body() theme: ThemeDTO){
     return await this.themeService.create(theme);
   }
@@ -21,6 +22,7 @@ export class ThemeController {
   @Auth()
   @Access(AccessLevel.Default)
   @Get('get')
+  @HttpCode(200)
   async get(@User('passport') passport: string){
     return await this.themeService.get(passport);
   }

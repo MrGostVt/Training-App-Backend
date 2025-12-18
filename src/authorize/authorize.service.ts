@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuthorizeEntity } from './entity/authorize.entity';
 import { Repository } from 'typeorm';
@@ -29,7 +29,11 @@ export class AuthorizeService {
     async createNewUser(user: RegisterDTO, device): Promise<{token: string}>{
         const {userName, password, isAdmin} = user;
 
-        const isExist: Boolean = !!(await this.authRepository.findOne({where: {userName}}));
+        const isExist: Boolean = !!(await this.authRepository
+            .createQueryBuilder('user')
+            .where('user.userName ILIKE :userName', { userName })
+            .getOne()
+        );
         if(isExist) throw new ConflictException("User already exist");
         console.log("Existing check")
 
@@ -83,10 +87,17 @@ export class AuthorizeService {
 
     async authByPassword(authData: AuthDataDTO, device: string): Promise<{token: string}>{
         const {password, userName} = authData;
-        const user: AuthorizeEntity | null = await this.authRepository.findOne({where: {userName}});
+        const user: AuthorizeEntity | null = await this.authRepository
+            .createQueryBuilder('user')
+            .where('user.userName ILIKE :userName', { userName })
+            .getOne();
+
+        if(user == null){
+            throw new NotFoundException("User does not exist");
+        }
 
         try{    
-            const isRight = await this.verifyPassword(password, user!.hash)
+            const isRight = await this.verifyPassword(password, user!.hash);
             if(!isRight) throw 'Unauthorized';
         }
         catch{
@@ -130,4 +141,12 @@ export class AuthorizeService {
         return token;
     }
 
+    async checkUsername(userName: string): Promise<{isExist: Boolean}>{
+        return {isExist: !!(await this.authRepository
+            .createQueryBuilder('user')
+            .where('user.userName ILIKE :userName', { userName })
+            .getOne()
+          )
+        };
+    }
 }

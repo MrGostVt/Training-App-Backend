@@ -59,19 +59,31 @@ export class ThemeService {
 
     async get(passport: string){
         const themes = await this.themeRepository.find({select: {id: true}});
-        let userThemes = await this.themeRepository.find({
-            where: {grade: {user: {id: passport}}},
-            relations: ['grade', 'grade.user'],
-        });
+        let userThemes = await this.themeRepository
+            .createQueryBuilder('theme')
+            .leftJoinAndSelect('theme.grade', 'grade')
+            .leftJoinAndSelect('grade.user', 'user')
+            .where('user.id = :id', { id: passport })
+            .select([
+                'theme.id',
+                'theme.title',
+                'grade.grade',
+            ])
+            .getMany();
 
         if(themes.length > userThemes.length){
             const missing = themes.filter((val) => {return !userThemes.find((userVal) => val.id === userVal.id)});
             await this.loadGrades(passport, missing);
-            
+            console.log('What wrong with you man')
             userThemes = await this.themeRepository.find({where: {grade: {user: {id: passport}}}});
         }
+        
+        let formedData = userThemes.map((val) => {
+            const {title, id, grade} = val;
 
-        return userThemes;
+            return {title, id, grade: grade[0].grade};
+        });
+        return formedData;
     }
 
     async getGradeSection(theme: string, passport: string): Promise<number | null>{
