@@ -3,7 +3,7 @@ import { IsArray, IsBoolean, IsDate, IsEnum, IsInt, IsNumber, IsString, Length, 
 export class ModerationResult{
     
     @IsString()
-    @Length(15, 150)
+    @Length(1,50)
     themeID: string;
 
     @IsString()
