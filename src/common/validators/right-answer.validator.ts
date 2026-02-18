@@ -10,12 +10,13 @@ class MyValidator implements ValidatorConstraintInterface {
         if(!isArray(correct) && answers.length >= correct.length){
             return false;
         }
-        console.log('Array: True')
-        console.log(correct)
+        console.log('Array: True');
+        console.log(correct, 'correct');
+        console.log(answers, 'answers');
         let success = 0;
         correct.forEach((val) => {
             console.log(val, correct.length)
-            if(val > 0 && val < answers.length){
+            if(val >= 0 && val < answers.length){
                 success++;
             }
         })

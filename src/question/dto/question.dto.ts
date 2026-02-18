@@ -1,14 +1,16 @@
 import { IsArray, IsEnum, IsInt, IsNumber, IsString, Length, Max, Min } from "class-validator";
+import { Content } from "src/common/enums/content.enum";
 import { QuestionLevel } from "src/common/enums/QuestionLevel.enum";
 import { QuestionType } from "src/common/enums/QuestionType.enum";
 import { IsRightCorrespondsToAnswers } from "src/common/validators/right-answer.validator";
+import { IsContains } from "src/common/validators/substring.validator";
 
 export class QuestionDTO{
     
     @IsString()
     @Length(5, 150)
+    // @IsContains([Content.OrderSplitter], {minQty: [], allRequired: true, qtyProperty: ['rightAnswers']})
     title: string;
-
     @IsEnum(QuestionLevel)
     level: QuestionLevel;
 

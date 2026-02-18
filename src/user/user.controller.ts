@@ -18,7 +18,7 @@ export class UserController {
   @Auth()
   @Post('choose-theme')
   @HttpCode(200)
-  async chooseCurrentTheme(@Query('theme') theme: string, @User('passport') passport: string){
-    return await this.userService.chooseTheme(theme, passport);
+  async chooseCurrentTheme(@Query('theme') theme: string, @User('passport') passport: string, @User('accessLevel') accessLevel: AccessLevel){
+    return await this.userService.chooseTheme(theme, passport, accessLevel);
   }
 }

@@ -18,6 +18,7 @@ export class RamDbService {
             payload,
             timer: !!timer? setTimeout(timer.func, timer.time): null,
         }
+        
         this.data[key] = entry;
         return true;
     }
@@ -44,6 +45,9 @@ export class RamDbService {
             return undefined;
         }
         return {...this.data[key].payload};
+    }
+    checkEntry(key: string): boolean{
+        return this.data[key] && true || false;
     }
 
     //TimeFormat: '5m' '5h' '15s'

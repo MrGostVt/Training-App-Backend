@@ -113,7 +113,6 @@ export class AuthorizeService {
 
         try{
             let userData = (await this.authRepository.findOne({where: {id: payload?.id}}));
-
             if(!userData) throw "Not found exception";
             if(payload.device != device) {throw "Wrong device"}
 

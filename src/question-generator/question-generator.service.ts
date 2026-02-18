@@ -368,12 +368,11 @@ export class QuestionGeneratorService {
             return null;
         }
         
-        const pattern: PatternsEntity | null = await this.patternsRepository.findOne({where: {id: entry.patternId}});
+        const pattern: PatternsEntity | null = await this.patternsRepository.findOne({where: {id: entry.patternId}, select: {theme: {id: true}}, relations: ['theme']});
         if(!pattern){
             return null;
         }
         const {title, answers, rightAnswers, theme, type, level, maxPoints} = {...entry, ...pattern}        
-
         return {id, title, answers, rightAnswers, theme, type, level, maxPoints} as QuestionData;
     }
 
@@ -399,11 +398,14 @@ export class QuestionGeneratorService {
         if(patterns.length === 0){
             return [];
         }
+
         if(patterns.length !== count){
+            const min = patterns.length;
             const diff = count - patterns.length;
 
             for(let i = 0; i < diff; i++){
-                const rndIndex = Math.floor(Math.random() * diff);
+                const rndIndex = Math.floor(Math.random() * min);
+                console.log(`RND INDEX ${rndIndex}`);
                 patterns.push(patterns[rndIndex]);
             }
         }        
@@ -423,16 +425,10 @@ export class QuestionGeneratorService {
             }
         }));
 
-        
         //Подумать, как лучше обыграть падение генератора на некоторых вопросах
         const nonNullQuestions: DefaultQuestion[] = questions.filter(
             (q) => q !== null
         );
-        
-        if(nonNullQuestions.length !== questions.length){
-            return null;
-        }
-
         
         return nonNullQuestions;
     }

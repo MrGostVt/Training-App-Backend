@@ -57,9 +57,8 @@ export class ThemeService {
         return;
     }
 
-    async get(passport: string){
-        const themes = await this.themeRepository.find({select: {id: true}});
-        let userThemes = await this.themeRepository
+    async getUserThemes(passport) {
+        return await this.themeRepository
             .createQueryBuilder('theme')
             .leftJoinAndSelect('theme.grade', 'grade')
             .leftJoinAndSelect('grade.user', 'user')
@@ -70,12 +69,17 @@ export class ThemeService {
                 'grade.grade',
             ])
             .getMany();
+    }
+
+    async get(passport: string){
+        const themes = await this.themeRepository.find({select: {id: true}});
+        let userThemes = await this.getUserThemes(passport);
 
         if(themes.length > userThemes.length){
             const missing = themes.filter((val) => {return !userThemes.find((userVal) => val.id === userVal.id)});
             await this.loadGrades(passport, missing);
             console.log('What wrong with you man')
-            userThemes = await this.themeRepository.find({where: {grade: {user: {id: passport}}}});
+            userThemes = await this.getUserThemes(passport);
         }
         
         let formedData = userThemes.map((val) => {
@@ -102,6 +106,12 @@ export class ThemeService {
         console.log(`Section on gradeSection calculating: ${section}`)
 
         return section === -1? gradeSection.length-1: section;
+    }
+
+    async getGrade(theme: string, passport: string): Promise<number>{
+        const grade: number | undefined = await this.gradeService.getGrade(passport, theme);
+
+        return !!grade? grade: 0;
     }
 
     async loadDefaultGrades(passport: string): Promise<boolean>{

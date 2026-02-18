@@ -1,3 +1,4 @@
+import { ModerationState } from "src/common/enums/ModerationState.enum";
 import { QuestionLevel } from "src/common/enums/QuestionLevel.enum";
 import { QuestionType } from "src/common/enums/QuestionType.enum";
 import { ThemeEntity } from "src/theme/entity/theme.entity";
@@ -30,8 +31,8 @@ export class QuestionEntity{
     @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.questions)
     theme: ThemeEntity;
 
-    @Column({name: 'is_moderated', type: 'boolean', default: false})
-    isModerated: boolean;
+    @Column({name: 'moderation_status', type: 'enum', enum: ModerationState, default: ModerationState.onModeration })
+    moderationStatus: ModerationState;
 
     @ManyToOne(() => UserEntity, (user: UserEntity) => user.createdQuestions)
     author: UserEntity;

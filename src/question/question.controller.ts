@@ -28,7 +28,7 @@ export class QuestionController {
     @Access(AccessLevel.Default)
     @Get('get')
     async get(
-        @Query('theme') theme: 'string',
+        @Query('theme') theme: string,
         @User('passport') passport: string,
     ){
         return await this.questionService.get(theme, passport)
@@ -41,17 +41,27 @@ export class QuestionController {
        return await this.questionService.answer(answers, passport);
     }
 
+    @Auth()
     @Access(AccessLevel.Moderator)
     @Get('moderating')
-    async getModerating(@Query('theme') theme: 'string', @User('passport') passport: string){
-        return await this.questionService.getModerating(theme, passport);
+    async getModerating(@Query('theme') theme: string, @Query('limit') limit: number, @User('passport') passport: string){
+        return await this.questionService.getModerating(theme, limit, passport);
+    }
+    
+    @Auth()
+    @Access(AccessLevel.Moderator)
+    @Get('check-moderator-on-question')
+    async checkModerator(@Query('idlist') idList: string, @User('passport') passport: string){
+        return await this.questionService.checkModerator(idList, passport);
     }
 
+    @Auth()
     @Access(AccessLevel.Moderator)
     @Post('moderate')
     async moderate(@Body() moderationResult: ModerationResult, @User('passport') passport: string){
         return await this.questionService.moderate(moderationResult, passport);
     }
+
 
     
     @Auth()

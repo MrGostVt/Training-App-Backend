@@ -18,8 +18,8 @@ export class UserEntity{
     @OneToMany(() => QuestionEntity, (question: QuestionEntity) => question.moderator)
     moderatedQuestions: QuestionEntity[];
 
-    @ManyToOne(() => ThemeEntity, (theme) => theme.activeUsers)
-    chosenTheme?: ThemeEntity;
+    @ManyToOne(() => ThemeEntity, (theme) => theme.activeUsers, {nullable: true})
+    chosenTheme: ThemeEntity | null;
 
     @CreateDateColumn()
     createdAt: Date
