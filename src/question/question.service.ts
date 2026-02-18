@@ -37,9 +37,10 @@ export class QuestionService {
         this.reInitializeQuestionsOnModeration();
     }
     async reInitializeQuestionsOnModeration(){
-        const questions = await this.questionRepository.find({where: {lastModeratorPassport: Not(IsNull())}, 
+        const questions = await this.questionRepository.find({where: {lastModeratorPassport: Not(IsNull()), moderationStatus: ModerationState.onModeration}, 
             select: {lastModeratorPassport: true, id: true}});
         
+        console.log("Reinitialize " + questions.length + " questions")
         for(let question of questions){
             this.writeOnModerationEntry(question, question.lastModeratorPassport!);
         }
@@ -47,7 +48,7 @@ export class QuestionService {
     async find(id: string): Promise<QuestionEntity | null>{
         const question = await this.questionRepository.findOne({where: {
                 id
-            },
+            }, 
             select: {theme: {id: true}},
             relations: ['theme']
         });
@@ -311,7 +312,7 @@ export class QuestionService {
                 }
                 this.ramDb.deleteEntry(`${question.id}:${passport}`)
             },
-            time: this.ramDb.formatTime('1m')! //
+            time: this.ramDb.formatTime('3m')!
             }
         );
     }
@@ -353,24 +354,23 @@ export class QuestionService {
 
     async moderate(result: ModerationResult, passport: string){
         const {questionID, themeID, timestamp, approved } = result;
-        const questionModeration = (await (this.questionRepository.findOne({where: {id: questionID, theme: {id: themeID}}, select: {lastModeratorPassport: true}})));
+        const moderated = await (this.questionRepository.findOne({where: {id: questionID}, select: {lastModeratorPassport: true, moderationStatus: true, theme: true}}));
 
-        if(!questionModeration){
+        if(!moderated || moderated.moderationStatus !== ModerationState.onModeration){
             throw new BadRequestException('Question not exists');
         }
-        if(questionModeration.lastModeratorPassport !== passport){
+        if(moderated.lastModeratorPassport !== passport){
             throw new ForbiddenException('Access denied');
         }
 
         if(approved){
-            await this.questionRepository.update({id: questionID}, {moderationStatus: ModerationState.Published});
+            await this.questionRepository.update({id: questionID}, {moderationStatus: ModerationState.Published, moderator: {id:passport}});
         }
         else{
-            await this.questionRepository.update({id: questionID}, {moderationStatus: ModerationState.Skipped});
-            // await this.questionRepository.delete({id: questionID});
+            await this.questionRepository.update({id: questionID}, {moderationStatus: ModerationState.Skipped, moderator: {id:passport}});
         }
 
-
+        this.ramDb.deleteEntry(`${questionID}:${passport}`);
         //TODO: add a cooldown for moderating based on level/moderated count;
         return;
     }
