@@ -5,7 +5,8 @@ export const getJWTConfig = async (configService: ConfigService): Promise<JwtMod
     {
         secret: configService.getOrThrow('JWT_SECRET'),
         signOptions: {
-            algorithm: 'HS256'
+            algorithm: 'HS256',
+            expiresIn: configService.getOrThrow('JWT_EXPIRE'),
         }
     }
 )

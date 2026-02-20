@@ -51,7 +51,7 @@ export class RamDbService {
     }
 
     //TimeFormat: '5m' '5h' '15s'
-    formatTime(time: string): number | null{
+    formatTime(time: string): number{
         const measures = {
             'm': 1000 * 60,
             'h': 1000 * 60 * 60,
@@ -60,12 +60,11 @@ export class RamDbService {
 
         const measure = time.split('').filter((val) => Object.keys(measures).includes(val))[0];
 
-        if(!measure){
-            return null;
-        }
+        if(!measure) throw 'Time measure error';
         const delay = (+time.split(measure)[0]) * measures[measure];
+        
+        if(Number.isNaN(delay)) throw 'Format time error';
 
-
-        return Number.isNaN(delay)? null: delay;
+        return delay;
     }
 }
