@@ -104,7 +104,7 @@ export class AuthorizeService {
             throw new UnauthorizedException("Unauthorized");
         }
 
-        const jwt = await this.createJWT({id: user!.id, device}, this.configService.getOrThrow('JWT_EXPIRE'))
+        const jwt = await this.createJWT({id: user!.id, device})
 
         return {token: jwt};
     }
@@ -135,8 +135,8 @@ export class AuthorizeService {
         return user;
     }
 
-    private async createJWT(tokenData: TokenData, expiresIn: string = '5m'): Promise<string>{
-        const token = await this.jwtService.signAsync(tokenData, {expiresIn}) 
+    private async createJWT(tokenData: TokenData): Promise<string>{
+        const token = await this.jwtService.signAsync(tokenData) 
         return token;
     }
 

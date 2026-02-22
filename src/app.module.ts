@@ -11,6 +11,8 @@ import { GradeModule } from './grade/grade.module';
 import { QuestionGeneratorModule } from './question-generator/question-generator.module';
 import { RamDbModule } from './ram-db/ram-db.module';
 import getTypeOrmConfig from './config/typeorm.config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import * as path from 'path';
 
 @Module({
   imports: [ConfigModule.forRoot({
@@ -21,6 +23,10 @@ import getTypeOrmConfig from './config/typeorm.config';
       useFactory: getTypeOrmConfig,
       inject: [ConfigService]
   }),
+    ServeStaticModule.forRoot({
+      rootPath: path.join(process.cwd(), 'public'),
+      serveRoot: '/static'
+    }),
     UserModule,
     AuthorizeModule,
     ThemeModule,

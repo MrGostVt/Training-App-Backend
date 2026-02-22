@@ -21,6 +21,9 @@ export class UserEntity{
     @ManyToOne(() => ThemeEntity, (theme) => theme.activeUsers, {nullable: true})
     chosenTheme: ThemeEntity | null;
 
+    @Column({name: 'icon_path', nullable: true, type: 'varchar'})
+    iconPath: string;
+
     @CreateDateColumn()
     createdAt: Date
 

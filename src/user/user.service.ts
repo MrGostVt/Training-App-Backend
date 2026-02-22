@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entity/user.entity';
 import { DataSource, Repository } from 'typeorm';
@@ -7,6 +7,10 @@ import { GradeService } from 'src/grade/grade.service';
 import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
 import { use } from 'passport';
 import { ModerationState } from 'src/common/enums/ModerationState.enum';
+import * as path from 'path';
+import * as fs from 'fs';
+import { RamDbService } from 'src/ram-db/ram-db.service';
+import { error } from 'console';
 
 type UserData = {
     username: string,
@@ -22,6 +26,7 @@ type UserData = {
     moderatedQuestionsCount: number | null,
     publishedQuestionsCount: number | null,
     skippedQuestionsCount: number | null,
+    icon: string | null
 }
 
 type QueryParams = {
@@ -52,6 +57,7 @@ export class UserService {
     constructor(
         @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
         private readonly themeService: ThemeService,
+        private readonly ramDb: RamDbService,
     ){}
 
     async findUser(passport: string): Promise<UserEntity | null>{
@@ -219,6 +225,7 @@ export class UserService {
                     'chosentheme.title AS themetitle',
                 ],
                 addSelect: [
+                    {select: 'MAX(user.icon_path)', name: 'icon'},
                     {select: 'MAX(grade.grade) FILTER (WHERE gradetheme.id = chosentheme.id)', name: 'grade'},
                     {select: 'COUNT(DISTINCT createdquestions.id) FILTER (WHERE createdtheme.id = chosentheme.id)', name: 'createdCount'},
                     {select: `COUNT(DISTINCT createdquestions.id) FILTER (WHERE createdquestions.moderation_status = :published AND createdtheme.id = chosentheme.id)`, name: 'publishedCount'},
@@ -241,7 +248,7 @@ export class UserService {
 
         const {
             theme, themetitle, createdCount, moderatedCount,
-            discardedCount, publishedCount, publishedCountBy, skippedCount, grade,
+            discardedCount, publishedCount, publishedCountBy, skippedCount, grade, icon
         } = user;
 
         const formedData: UserData = {
@@ -258,6 +265,7 @@ export class UserService {
             moderatedQuestionsCount: parseInt(moderatedCount) || 0,
             publishedQuestionsCount: parseInt(publishedCountBy) || 0,
             skippedQuestionsCount: parseInt(skippedCount) || 0,
+            icon: icon === null? null: `uploads/icons/${icon}`,
         };
 
         if(!user.theme){
@@ -268,5 +276,39 @@ export class UserService {
         formedData.chosenTheme.title = themetitle;
 
         return formedData;
+    }
+
+    async uploadIcon(file: Express.Multer.File, passport: string){
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'icons');
+        const user = await this.userRepository.findOne({where: {id: passport}, select: {iconPath: true, id: true}});
+        if(!user) throw new NotFoundException('User not found');
+        if(this.ramDb.checkEntry(`${passport}:${user.iconPath}`)) {
+            throw new HttpException({
+                status: HttpStatus.TOO_MANY_REQUESTS,
+                error: "Too many request",
+                message: "Wait before resubmitting"
+            }, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        const checkDir = uploadDir + '/' + user.iconPath
+        if(user.iconPath != null && fs.existsSync(checkDir)) fs.rmSync(checkDir);
+
+        const type = file.mimetype.split('/')[1];
+        const filename = `icon-${+new Date()}.${type}`;
+        file.filename = filename;
+
+        const filePath = path.join(uploadDir, file.filename);
+        if(!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, {recursive: true});
+        
+        fs.writeFileSync(filePath, file.buffer);
+
+        this.userRepository.update({id: passport}, {iconPath: filename});
+        this.ramDb.addEntry(`${passport}:${filename}`, true, 
+        {
+            func: () => {
+                this.ramDb.deleteEntry(`${passport}:${filename}`)
+            },
+            time: this.ramDb.formatTime('3m')
+        });
+        return {icon: `uploads/icons/${filename}`};
     }
 }

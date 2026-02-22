@@ -2,6 +2,9 @@
 /dist
 /node_modules
 /build
+/public
+/js-test
+
 
 # Logs
 logs
@@ -57,4 +60,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 docker-compose.yml
 
-/js-test
+
