@@ -20,7 +20,13 @@ async function bootstrap() {
 
   setSwagger(app);
 
-  app.enableCors({origin: ['http://localhost:9000']})
+  app.enableCors({origin: ['http://localhost:9000']});
+  // app.useGlobalFilters({
+  //   catch(exception, host) {
+  //     console.error(exception);
+  //     throw exception;
+  //   }
+  // });
 
   await app.listen(process.env.PORT ?? 3000);
 }
