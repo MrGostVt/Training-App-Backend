@@ -12,6 +12,7 @@ import { QuestionGeneratorModule } from './question-generator/question-generator
 import { RamDbModule } from './ram-db/ram-db.module';
 import getTypeOrmConfig from './config/typeorm.config';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ArticleModule } from './article/article.module';
 import * as path from 'path';
 
 @Module({
@@ -33,7 +34,8 @@ import * as path from 'path';
     QuestionModule,
     GradeModule,
     QuestionGeneratorModule,
-    RamDbModule],
+    RamDbModule,
+    ArticleModule],
   controllers: [AppController],
   providers: [AppService],
 })

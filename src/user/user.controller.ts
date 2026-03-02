@@ -5,8 +5,6 @@ import { User } from 'src/common/decorators/user.decorator';
 import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
 import {Express} from 'express'
 import { FileInterceptor } from '@nestjs/platform-express';
-import { MulterField } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
-import passport from 'passport';
 
 @Controller('user')
 export class UserController {

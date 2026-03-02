@@ -1,3 +1,4 @@
+import { ArticleEntity } from "src/article/entity/article.entity";
 import { GradeEntity } from "src/grade/entity/grade.entity";
 import { QuestionEntity } from "src/question/entity/question.entity";
 import { ThemeEntity } from "src/theme/entity/theme.entity";
@@ -18,6 +19,9 @@ export class UserEntity{
     @OneToMany(() => QuestionEntity, (question: QuestionEntity) => question.moderator)
     moderatedQuestions: QuestionEntity[];
 
+    @OneToMany(() => ArticleEntity, (article: ArticleEntity) => article.author)
+    articles: ArticleEntity[];
+    
     @ManyToOne(() => ThemeEntity, (theme) => theme.activeUsers, {nullable: true})
     chosenTheme: ThemeEntity | null;
 
