@@ -7,8 +7,10 @@ import { AccessLevel } from "../enums/AccessLevel.enum";
 
 export const User = createParamDecorator((data: keyof AuthorizeEntity & {accessLevel: AccessLevel}, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
-    const user: AuthorizeEntity & {accessLevel: AccessLevel} = request.user;
+    const language = request.headers['X-target-language'] || 'ua';
+
+    const user: AuthorizeEntity & {accessLevel: AccessLevel, language: string} = {...request.user, language};
     return data? user[data]: user;
-}) as <K extends keyof (AuthorizeEntity & { accessLevel: AccessLevel })>(
+}) as <K extends keyof (AuthorizeEntity & { accessLevel: AccessLevel, language: string })>(
     data?: K
 ) => ParameterDecorator;

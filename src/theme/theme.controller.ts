@@ -5,6 +5,7 @@ import { Access } from 'src/common/decorators/access.decorator';
 import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
 import { ThemeDTO } from './dto/theme.dto';
 import { User } from 'src/common/decorators/user.decorator';
+import { IntegrationDto } from './dto/integration.dto';
 
 
 @Controller('theme')
@@ -25,5 +26,13 @@ export class ThemeController {
   @HttpCode(200)
   async get(@User('passport') passport: string){
     return await this.themeService.get(passport);
+  }
+
+  @Auth()
+  @Access(AccessLevel.Admin)
+  @Post('create-integration')
+  @HttpCode(200)
+  async createIntegration(@Body() dto: IntegrationDto){
+    return await this.themeService.createIntegration(dto)
   }
 }

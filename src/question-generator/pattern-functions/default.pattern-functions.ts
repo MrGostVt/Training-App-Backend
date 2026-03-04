@@ -1,3 +1,6 @@
+import { IntegrationEntity } from "src/theme/entity/integration.entity";
+import { json } from "stream/consumers";
+
 type Arguments = [any, any];
 
 export const randomNumber = (range: Arguments) => {
@@ -164,4 +167,53 @@ export const decorateInFunction = (values: Array<() => void>) => {
             value();
         }
     }
+}
+
+export const RequestWBody = async (values: [any, any], integration: IntegrationEntity & {params, headers}) => {
+    const [,field] = values;
+
+    const request = {
+        headers: {
+            ...integration.headers
+        },
+        method: 'POST',
+        body: JSON.stringify({
+            ...integration.params,
+            ...field
+        })
+    };
+
+    try{
+        const responce = await fetch(integration.service, request);
+
+        if(responce.status > 400) throw {
+            message: `${responce.status} Something went wrong`,
+            details: responce.text
+        }
+        const result = await responce.json();
+        // console.log('request:');
+        // console.log(request);
+        // console.log('request result');
+        // console.log(result);
+
+        return result;
+    }
+    catch(err){
+        throw 'Wrong request. ' + err.message;
+    }
+}
+
+export const GenerateAnswersByData = (args: [number, string], data: string[]) => {
+    const [count, correct] = args;
+    const range = data.filter(val => val !== correct);
+    const result: string[] = [correct];
+
+    console.log('GENERATE ANSWERS');
+    console.log(args);
+    
+    for(let i = 0; i < count; i++){
+        const rndIndex = randomNumber([0, range.length-1]);
+        result.push(range.splice(rndIndex, 1)[0]);
+    }
+    return result;
 }

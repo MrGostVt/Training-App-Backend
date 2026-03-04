@@ -9,7 +9,7 @@ export class PatternsEntity{
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({unique: true, type:'varchar'})
+    @Column({unique: false, type:'varchar'})
     pattern: string; 
     
     @Column({type: 'enum', enum: QuestionLevel, enumName: 'QuestionLevel', default: QuestionLevel.easy})
@@ -23,6 +23,9 @@ export class PatternsEntity{
 
     @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.generationPatterns)
     theme: ThemeEntity;
+
+    @Column({type: 'varchar', nullable: true})
+    data: string | null;
 
     @CreateDateColumn()
     createdAt: Date;

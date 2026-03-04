@@ -1,11 +1,11 @@
 import { Transform } from "class-transformer";
-import { IsEAN, IsEnum, IsInt, IsNotEmpty, IsNumber, IsNumberString, IsString, Length, Max, Min } from "class-validator";
+import { IsArray, IsEAN, IsEnum, IsInt, IsNotEmpty, IsNumber, IsNumberString, IsOptional, IsString, Length, Max, Min } from "class-validator";
 import { QuestionLevel } from "src/common/enums/QuestionLevel.enum";
 import { QuestionType } from "src/common/enums/QuestionType.enum";
 
 export class GenerationPatternDTO{
     @IsString()
-    @Length(3, 1000)
+    @Length(3, 6000)
     @Transform(({value}) => {
         return value.split(' ').join('');
     })
@@ -26,7 +26,13 @@ export class GenerationPatternDTO{
     @IsNumber({allowNaN: false})
     @IsInt()
     @IsNotEmpty()
-    @Min(0)
-    @Max(15)
+    @Min(5)
+    @Max(25)
     maxPoints: number;
+
+    @IsOptional()
+    @IsArray()
+    @IsString({each: true})
+    data?: string[];
+
 }
