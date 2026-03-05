@@ -29,9 +29,10 @@ export class QuestionController {
     @Get('get')
     async get(
         @Query('theme') theme: string,
+        @User('language') language: string,
         @User('passport') passport: string,
     ){
-        return await this.questionService.get(theme, passport)
+        return await this.questionService.get(theme, language, passport)
     }
 
     @Auth()
@@ -61,14 +62,12 @@ export class QuestionController {
     async moderate(@Body() moderationResult: ModerationResult, @User('passport') passport: string){
         return await this.questionService.moderate(moderationResult, passport);
     }
-
-
     
     @Auth()
     @Access(AccessLevel.Admin)
     @Post('create-generation-pattern')
     @HttpCode(HttpStatus.OK)
-    async createGenerationPattern(@Body() patternDto: GenerationPatternDTO, @User('passport') passport: string){
-        return await this.questionService.createGenerationPattern(patternDto, passport);
+    async createGenerationPattern(@Body() patternDto: GenerationPatternDTO, @User('language') language: string, @User('passport') passport: string){
+        return await this.questionService.createGenerationPattern(patternDto, language, passport);
     }
 }

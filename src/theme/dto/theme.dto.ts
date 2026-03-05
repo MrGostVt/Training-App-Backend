@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class ThemeDTO{
     @IsNotEmpty()
@@ -8,8 +8,8 @@ export class ThemeDTO{
     @IsNumber({allowNaN: false})
     @IsInt()
     @IsNotEmpty()
-    @Min(0)
-    @Max(1000)
+    @Min(1000)
+    @Max(50000)
     maxPoints: number;
 
     @IsOptional()

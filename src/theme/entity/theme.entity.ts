@@ -2,7 +2,8 @@ import { GradeEntity } from "src/grade/entity/grade.entity";
 import { PatternsEntity } from "src/question-generator/entity/patterns.entity";
 import { QuestionEntity } from "src/question/entity/question.entity";
 import { UserEntity } from "src/user/entity/user.entity";
-import { Column, CreateDateColumn, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { IntegrationEntity } from "./integration.entity";
 
 @Entity({name: 'Theme'})
 export class ThemeEntity{
@@ -29,6 +30,10 @@ export class ThemeEntity{
 
     @OneToMany(() => UserEntity, (user) => user.chosenTheme)
     activeUsers: UserEntity[];
+
+    @OneToOne(() => IntegrationEntity, (integration) => integration.theme, {onDelete: 'SET NULL', nullable: true})
+    @JoinColumn()
+    integration: IntegrationEntity;
 
     @CreateDateColumn()
     createdAt: Date;

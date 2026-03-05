@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { AccessToActions, AccessToValues, add, Concat, decorateInFunction, divide, formData, GenNumberAnswers, GenQuestionID, log, multiply, randomNumber, subtract, Val } from './pattern-functions/default.pattern-functions';
+import { AccessToActions, AccessToValues, add, Concat, decorateInFunction, divide, 
+    formData, GenerateAnswersByData, GenNumberAnswers, GenQuestionID, log, multiply, randomNumber,
+     RequestWBody, subtract, Val } from './pattern-functions/default.pattern-functions';
 import { RamDbService } from 'src/ram-db/ram-db.service';
 import { of, timeout } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,10 +9,8 @@ import { PatternsEntity } from './entity/patterns.entity';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { QuestionLevel } from 'src/common/enums/QuestionLevel.enum';
 import { DefaultQuestion, GenericQuestionData, QuestionData } from 'src/common/types/Question.type';
-import { QuestionType } from 'src/common/enums/QuestionType.enum';
 import { GenerationPatternDTO } from 'src/common/dto/generation-pattern.dto';
-import { isArray } from 'class-validator';
-import { debug } from 'console';
+import { IntegrationEntity } from 'src/theme/entity/integration.entity';
 type InterObject = {
     payload: any[],
     funcs: any[],
@@ -20,6 +20,8 @@ type InterObject = {
 export class QuestionGeneratorService {
     'rnd=1=1000+rnd=12=13|rnd=2=10+rnd=2=10'
     "rnd=25=50,rnd=1=25|myValues=0=0@+-@myValues=0=1|setTitle==concat=myValues=0=0=concat=myActions=1=0=myValues=0=0|setAnswers==genNumAnswers=4=myValues=1=0"
+    "rnd=25=50,rnd=1=25|myValues=0=0@+-@myValues=0=1|setTitle==concat=myValues=0=0=concat=myActions=1=0=myValues=0=1|setAnswers==genNumAnswers=4=myValues=1=0|setRightAnswers==myValues=1=0"
+
     private readonly separator = '|';
     private readonly smallSeparator = ',';
     private readonly equality = '=';
@@ -39,19 +41,17 @@ export class QuestionGeneratorService {
         },
         'setAnswers': (args: [null, any], question) => {formData(['answers',args[1]], question)},
         'setRightAnswers': (args: [null, any], question) => {
-            const [temp, answer] = args;
+            const [, answer] = args;
 
-            // if(isArray(answer)){
-            //     for()
-            // }
-
+            console.log(answer);
             const answers = question['answers'];
             if(!answers){
                 throw 'Answers must be setted earlier then rightAnswers';
             }
 
             const rightAnswers = [answers.indexOf(answer)];
-
+            console.log(answer, 'ANSWER!');
+            console.log(question, 'QUESTION')
             if(rightAnswers[0] === -1){
                 throw 'Right answer must exist in answers array';
             }
@@ -64,8 +64,41 @@ export class QuestionGeneratorService {
         'myActions': AccessToActions,
         'val': Val,
         'concat': Concat,
+        'concatWSpace': ((args: [string, string]) => Concat([args[0] + ' ', args[1]])),
         'genNumAnswers': GenNumberAnswers,
         'genQuestionId': GenQuestionID,
+        'bodyRequest': RequestWBody,
+        'additionalData': (args: [any, number], data: string[]) => {
+            const [,index] = args;
+            // console.log('ADDITIONAL DATA', args, data);
+            if(data[index] == undefined) throw 'Wrong additional data!';
+            return data[index];
+        },
+        'additionalDataLength': (data: string[]) => data.length,
+        'assignObject': (args: [string, any]) => {
+            const [key, value] = args;
+            // console.log("assignObject", args);
+
+            return {[key]: value};
+        },
+        'multiplyObjects': (args: [any, any]) => {
+            const [obj1, obj2] = args;
+            // console.log("MultiplyObject", args);
+
+            return {...obj1, ...obj2};
+        },
+        'object': (args: [string, Object]) => {
+            const [property, object] = args;
+            console.log("Object", args);
+            return object[property];
+        },
+        'array': (args: [number, any[]]) => {
+            const [i, array] = args;
+            console.log(args);
+            return array[i];
+        },
+        'language': (language: string) => language,
+        'generateDataAnswers': GenerateAnswersByData
     };
     private readonly defaultPatterns = {
         '+': add,
@@ -214,7 +247,8 @@ export class QuestionGeneratorService {
         return object;
     }
 
-    private runFunctions(functions: InterObject, interValues: any[], interActions: any[], dataToReturn: any): any[]{
+    private async runFunctions(functions: InterObject, interValues: any[], interActions: any[], 
+        dataToReturn: any, integration: IntegrationEntity | undefined, language: string, additionalData: string[]): Promise<any[]>{
         let results: any[] = [];
         const args = functions.payload;
         const funcs = functions.funcs;
@@ -239,6 +273,7 @@ export class QuestionGeneratorService {
 
                 const functionKey = funcs[j][i];
                 let result: any;
+                // console.log(functionKey);
                 switch(functionKey){
                     case 'setRightAnswers':
                     case 'setAnswers':
@@ -247,13 +282,30 @@ export class QuestionGeneratorService {
                         this.patterns[functionKey](args[j][i], dataToReturn);
                         break;
                     case 'myActions':
-                        result = this.patterns[functionKey](args[j][i], interActions);
+                        result = await this.patterns[functionKey](args[j][i], interActions);
                         break;
                     case 'myValues': 
-                        result = this.patterns[functionKey](args[j][i], interValues);
+                        result = await this.patterns[functionKey](args[j][i], interValues);
+                        break;
+                    case 'paramRequest': 
+                    case 'bodyRequest': 
+                        if(!integration) throw 'Integration doesnt exist'
+                        result = await this.patterns[functionKey](args[j][i], integration);
+                        break;
+                    case 'language':
+                        result = await this.patterns[functionKey](language);
+                        break;
+                    case 'additionalData':
+                        result = await this.patterns[functionKey](args[j][i], additionalData);
+                        break;
+                    case 'additionalDataLength':  
+                        result = await this.patterns[functionKey](additionalData);
+                        break;
+                    case 'generateDataAnswers': 
+                        result = await this.patterns[functionKey](args[j][i], additionalData);
                         break;
                     default:
-                        result = this.patterns[functionKey](args[j][i]);
+                        result = await this.patterns[functionKey](args[j][i]);
                         break;
                 }
 
@@ -304,7 +356,7 @@ export class QuestionGeneratorService {
         return values;
     }
 
-    async readPattern(patternInfo: PatternsEntity, passport?: string): Promise<DefaultQuestion | null>{
+    async readPattern(patternInfo: PatternsEntity, language: string, passport?: string, integration?: IntegrationEntity): Promise<DefaultQuestion | null>{
         const pattern = patternInfo.pattern;
         const questionData = {
             id: GenQuestionID(...(passport ? [passport] : [])),
@@ -313,6 +365,7 @@ export class QuestionGeneratorService {
             type: patternInfo.type,
         };
 
+        const additionalData = patternInfo.data? patternInfo.data.split(','): [];
         const tempData: GenericQuestionData = {
             answers: [],
             rightAnswers: [],
@@ -335,8 +388,7 @@ export class QuestionGeneratorService {
                     const actions = this.readActions(pattern.payload[0]);
                     const functions = this.readFunctions([...actions.payload]);
                     console.log(`functions: ${functions.funcs}`)
-    
-                    const results = this.runFunctions(functions, interValues, interActions, tempData);
+                    const results = await this.runFunctions(functions, interValues, interActions, tempData, integration, language, additionalData);
                     const final = this.runActions([...actions.funcs], [...results])[0];
     
                     if(final === 0 || !!final && !Number.isNaN(final)){
@@ -358,7 +410,7 @@ export class QuestionGeneratorService {
             return dataToReturn;
         }
         catch(err){
-            throw `Generation error: ${err.message}`
+            throw `Generation error: ${err}`
         }
     }
 
@@ -392,7 +444,7 @@ export class QuestionGeneratorService {
         return query;
     }
 
-    async getQuestion(themeId: string, count: number, level: QuestionLevel, passport?: string): Promise<DefaultQuestion[] | null>{
+    async getQuestion(themeId: string, count: number, level: QuestionLevel, language: string, passport?: string, integration?: IntegrationEntity): Promise<DefaultQuestion[] | null>{
         let patterns = (await (this.generateQuestionQuery(themeId, count, [{key: 'level', value: level}])).getMany());
         
         if(patterns.length === 0){
@@ -417,10 +469,10 @@ export class QuestionGeneratorService {
             try{
                 console.log(`Read pattern: `)
                 console.log(val.pattern)
-                return await this.readPattern(val, passport)
+                return await this.readPattern(val, language, passport, integration)
             }
             catch(err){
-                console.log(`GetQuestions---${err.message}`);
+                console.log(`GetQuestions---${err}`);
                 return null;
             }
         }));
@@ -433,42 +485,58 @@ export class QuestionGeneratorService {
         return nonNullQuestions;
     }
 
-    async testPattern(pattern: PatternsEntity){
+    FormReport(result: DefaultQuestion | null): string{
+        if(!result) return 'Result is undefined';
+        const problems: any[] = [];
+
+        if(result.answers.length <= result.rightAnswers.length || result.answers.length < 2) problems.push('answers: Wrong length');
+        if(result.rightAnswers.length < result.answers.length || result.rightAnswers.length < 1) problems.push(`rightAnswers: Wrong length`);
+        if(result.title.length === 0) problems.push('title: Wrong length');
+
+        return problems.join(',')
+    }
+
+    async testPattern(pattern: PatternsEntity, integration: IntegrationEntity | undefined, language: string){
         try{
-            const result = await this.readPattern(pattern);
+            const result = await this.readPattern(pattern, language, '', integration);
             console.log(result);
             if(!result || result.answers.length < result.rightAnswers.length 
                 || result.rightAnswers.length < 1 || result.title.length === 0){
-                throw 'Bad pattern';
+                throw 'Wrong question data: ' + this.FormReport(result);
             }
         }
         catch(err){
-            console.log(`TestPattern---${err.message}`);
-            return false;
+            console.log(`TestPattern---${err}`);
+            throw err;
         }
 
         return true;
     }
 
-    async createPattern(patternData: GenerationPatternDTO): Promise<Boolean>{
-        const {theme, type, maxPoints, level, pattern, } = patternData;
+    async createPattern(patternData: GenerationPatternDTO, language: string, integration?: IntegrationEntity): Promise<Boolean>{
+        const {theme, type, maxPoints, level, pattern, data} = patternData;
+
+        const serializedData = (data && data.join(',') ) || null;
 
         const tempEntity = this.patternsRepository.create({
             theme: {id: theme},
             type,
             maxPoints,
             level,
-            pattern
+            pattern,
+            data: serializedData,
         });
 
-        const isWork = await this.testPattern(tempEntity);
+        const isWork = await this.testPattern(tempEntity, integration, language);
         console.log(`Pattern is running, result: ${isWork}`);
 
         if(isWork){
             this.patternsRepository.save(tempEntity);
             return true;
         }
-        return false; 
+        
+        throw ''; 
+        // return false;
     }
 }
 //01.12 - Проблемы с генерацией, undefined в theme, 

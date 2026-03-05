@@ -27,7 +27,7 @@ export class AuthorizeService {
     ){}
     
     async createNewUser(user: RegisterDTO, device): Promise<{token: string}>{
-        const {userName, password, isAdmin} = user;
+        const {userName, password, adminCode} = user;
 
         const isExist: Boolean = !!(await this.authRepository
             .createQueryBuilder('user')
@@ -52,7 +52,7 @@ export class AuthorizeService {
                 userName,
                 passport: newUser.id,
                 hash,
-                isAdmin: !!isAdmin
+                isAdmin: adminCode === this.configService.getOrThrow('ADMIN_CODE'),
             });
             await this.authRepository.save(userAuth);
 
