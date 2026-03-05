@@ -4,5 +4,5 @@ export class CheckModerationDTO{
     @IsString()
     @IsNotEmpty()
     @Length(1)
-    idList: string;
+    idlist: string;
 }

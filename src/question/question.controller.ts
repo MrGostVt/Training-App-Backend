@@ -53,8 +53,8 @@ export class QuestionController {
     @Auth()
     @Access(AccessLevel.Moderator)
     @Get('check-moderator-on-question')
-    async checkModerator(@Query(new ValidationPipe({transform: true})) {idList}: CheckModerationDTO, @User('passport') passport: string){
-        return await this.questionService.checkModerator(idList, passport);
+    async checkModerator(@Query(new ValidationPipe({transform: true})) {idlist}: CheckModerationDTO, @User('passport') passport: string){
+        return await this.questionService.checkModerator(idlist, passport);
     }
 
     @Auth()
