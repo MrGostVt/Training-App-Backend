@@ -12,7 +12,6 @@ export class RegisterDTO{
     @IsNotEmpty()
     @Length(5, 50)
     @IsContains([Content.Number, Content.UpperCase], {minQty: [3,1], allRequired: true, qtyProperty: []})
-    // @CheckSymbols({blockedSymbols: '><'})
     password: string;
 
     @IsOptional()
