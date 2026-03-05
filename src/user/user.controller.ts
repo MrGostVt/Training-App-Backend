@@ -1,10 +1,11 @@
-import { Controller, FileTypeValidator, Get, HttpCode, MaxFileSizeValidator, ParseFilePipe, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, FileTypeValidator, Get, HttpCode, MaxFileSizeValidator, ParseFilePipe, Post, Query, UploadedFile, UseInterceptors, ValidationPipe } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Auth } from 'src/common/decorators/auth.decorator';
 import { User } from 'src/common/decorators/user.decorator';
 import { AccessLevel } from 'src/common/enums/AccessLevel.enum';
 import {Express} from 'express'
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ThemeParamDTO } from 'src/common/dto/theme-param.dto';
 
 @Controller('user')
 export class UserController {
@@ -20,7 +21,7 @@ export class UserController {
   @Auth()
   @Post('choose-theme')
   @HttpCode(200)
-  async chooseCurrentTheme(@Query('theme') theme: string, @User('passport') passport: string, @User('accessLevel') accessLevel: AccessLevel){
+  async chooseCurrentTheme(@Query(new ValidationPipe({transform: true})) {theme}: ThemeParamDTO, @User('passport') passport: string, @User('accessLevel') accessLevel: AccessLevel){
     return await this.userService.chooseTheme(theme, passport, accessLevel);
   }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, ValidationPipe } from '@nestjs/common';
 import { QuestionService } from './question.service';
 import { QuestionDTO } from './dto/question.dto';
 import { Access } from 'src/common/decorators/access.decorator';
@@ -10,6 +10,9 @@ import { UserEntity } from 'src/user/entity/user.entity';
 import { User } from 'src/common/decorators/user.decorator';
 import { QuestionLevel } from 'src/common/enums/QuestionLevel.enum';
 import { GenerationPatternDTO } from '../common/dto/generation-pattern.dto';
+import { CheckModerationDTO } from 'src/common/dto/check-moderation.dto';
+import { ThemeParamDTO } from 'src/common/dto/theme-param.dto';
+import { GetModeratingDTO } from 'src/common/dto/get-moderating.dto';
 
 @Controller('question')
 export class QuestionController {
@@ -22,13 +25,11 @@ export class QuestionController {
         return await this.questionService.create(question, passport, userLevel);
     }
 
-    //Find by theme & level & cost and add paging & random choose
-    //Комбинатор вопросов починить
     @Auth()
     @Access(AccessLevel.Default)
     @Get('get')
     async get(
-        @Query('theme') theme: string,
+        @Query(new ValidationPipe({transform: true})) {theme}: ThemeParamDTO,
         @User('language') language: string,
         @User('passport') passport: string,
     ){
@@ -45,15 +46,15 @@ export class QuestionController {
     @Auth()
     @Access(AccessLevel.Moderator)
     @Get('moderating')
-    async getModerating(@Query('theme') theme: string, @Query('limit') limit: number, @User('passport') passport: string){
+    async getModerating(@Query(new ValidationPipe({transform: true})) {theme, limit}: GetModeratingDTO, @User('passport') passport: string){
         return await this.questionService.getModerating(theme, limit, passport);
     }
     
     @Auth()
     @Access(AccessLevel.Moderator)
     @Get('check-moderator-on-question')
-    async checkModerator(@Query('idlist') idList: string, @User('passport') passport: string){
-        return await this.questionService.checkModerator(idList, passport);
+    async checkModerator(@Query(new ValidationPipe({transform: true})) {idlist}: CheckModerationDTO, @User('passport') passport: string){
+        return await this.questionService.checkModerator(idlist, passport);
     }
 
     @Auth()
