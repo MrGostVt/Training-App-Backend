@@ -16,5 +16,5 @@ export class RegisterDTO{
 
     @IsOptional()
     @IsString()
-    adminCode?: boolean;
+    adminCode?: string;
 }
