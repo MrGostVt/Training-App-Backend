@@ -144,7 +144,8 @@ export const GenNumberAnswers = (args: Arguments) => {
 
 export const GenQuestionID = (...details: string[]) => {
     try{
-        let id = `generic:${+(new Date())}`;
+        const identificator = randomNumber([0,+(new Date())]) * Math.random();
+        let id = `generic:${identificator}:${details[0] || ''}`;
     
         for(const detail of details){
             id.concat(`:${detail}`);
