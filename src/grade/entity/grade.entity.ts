@@ -12,7 +12,7 @@ export class GradeEntity{
     @ManyToOne(() => UserEntity, (user: UserEntity) => user.grades)
     user: UserEntity;
     
-    @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.grade)
+    @ManyToOne(() => ThemeEntity, (theme: ThemeEntity) => theme.grades)
     theme: ThemeEntity;
 
     @Column({type: 'int', default: 0})

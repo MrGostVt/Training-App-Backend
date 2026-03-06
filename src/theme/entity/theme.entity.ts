@@ -26,7 +26,7 @@ export class ThemeEntity{
     questions: QuestionEntity[];
 
     @OneToMany(() => GradeEntity, (grade: GradeEntity) => grade.theme, {cascade: true})
-    grade: GradeEntity;
+    grades: GradeEntity[];
 
     @OneToMany(() => UserEntity, (user) => user.chosenTheme)
     activeUsers: UserEntity[];

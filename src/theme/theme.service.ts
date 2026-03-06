@@ -68,10 +68,10 @@ export class ThemeService {
         return true;
     }
 
-    async getUserThemes(passport) {
+    async getUserThemes(passport: string) {
         return await this.themeRepository
             .createQueryBuilder('theme')
-            .leftJoinAndSelect('theme.grade', 'grade')
+            .leftJoinAndSelect('theme.grades', 'grade')
             .leftJoinAndSelect('grade.user', 'user')
             .where('user.id = :id', { id: passport })
             .select([
@@ -94,9 +94,9 @@ export class ThemeService {
         }
         
         let formedData = userThemes.map((val) => {
-            const {title, id, grade} = val;
+            const {title, id, grades} = val;
 
-            return {title, id, grade: grade[0].grade};
+            return {title, id, grade: grades[0].grade};
         });
 
         return formedData;
