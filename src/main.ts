@@ -4,11 +4,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
 import { DocumentBuilder } from '@nestjs/swagger';
 import { setSwagger } from './config/swagger.config';
+import { ConfigService } from '@nestjs/config';
 
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+  const configService = app.get<ConfigService>(ConfigService);
+
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   app.useGlobalPipes(new ValidationPipe({
@@ -20,7 +22,7 @@ async function bootstrap() {
 
   setSwagger(app);
 
-  app.enableCors({origin: ['http://localhost:9000']});
+  app.enableCors({origin: [configService.getOrThrow('WEB_APP_HOST')], credentials: true});
   // app.useGlobalFilters({
   //   catch(exception, host) {
   //     console.error(exception);

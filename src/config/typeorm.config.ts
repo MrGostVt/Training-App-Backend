@@ -11,6 +11,9 @@ async function getTypeOrmConfig (config: ConfigService): Promise<TypeOrmModuleOp
         database: config.getOrThrow<string>('POSTGRES_DB'),
         autoLoadEntities: true,
         synchronize: true,
+        ssl: {
+            rejectUnauthorized: true,
+        }
     }
 }
 
