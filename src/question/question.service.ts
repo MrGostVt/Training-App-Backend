@@ -283,7 +283,7 @@ export class QuestionService {
         const query = this.questionRepository.createQueryBuilder('q')
             .where('q.themeId = :themeId', { themeId: theme })
             .andWhere('q.moderationStatus = :moderationStatus', {moderationStatus: ModerationState.onModeration})
-            // .andWhere('q.lastModeratorPassport = :val', {val: 'null'})
+            .andWhere('q.lastModeratorPassport IS NULL')
             .orderBy('RANDOM()')
             .limit(limit)
             .select([
