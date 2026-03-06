@@ -21,8 +21,10 @@ async function bootstrap() {
   }));
 
   setSwagger(app);
+  const host = configService.getOrThrow('WEB_APP_HOST');
 
-  app.enableCors({origin: [configService.getOrThrow('WEB_APP_HOST')], credentials: true});
+  app.enableCors({origin: [host], credentials: true});
+  console.log(host);
   // app.useGlobalFilters({
   //   catch(exception, host) {
   //     console.error(exception);
