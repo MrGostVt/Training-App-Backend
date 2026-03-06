@@ -311,7 +311,7 @@ export class QuestionService {
                 if(moderationResult == ModerationState.onModeration){
                     await this.questionRepository.update({id: question.id}, {lastModeratorPassport: null});
                 }
-                this.ramDb.deleteEntry(`${question.id}:${passport}`)
+                this.ramDb.deleteEntry(`${question.id}:${passport}`);
             },
             time: this.ramDb.formatTime('3m')!
             }
