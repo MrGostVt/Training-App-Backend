@@ -133,8 +133,6 @@ export class UserService {
                 setParameter: [{key: 'published', value: ModerationState.Published}, {key: 'skipped', value: ModerationState.Skipped}, {key: 'onmoderation', value: ModerationState.onModeration}
                 ],
                 groupBy: 'chosentheme.id',
-                addGroupBy: ['grade.id', 'gradetheme.id'],
-                
             });
         const user = await this.findUser(passport);
         const theme = await this.themeService.find(themeId);
@@ -143,7 +141,8 @@ export class UserService {
         if(!user) throw new UnauthorizedException('User not found');
         await this.userRepository.update({id: passport}, {chosenTheme: theme});
         if(theme) var {createdCount, publishedCount, discardedCount, publishedCountBy, skippedCount, moderatedCount, grade} = await query.getRawOne();
-        
+
+
         const data: UpdatedThemeData = {
             createdQuestions: createdCount || 0,
             publishedQuestions:publishedCount || 0,
@@ -236,9 +235,7 @@ export class UserService {
                 ],
                 setParameter: [{key: 'published', value: ModerationState.Published}, {key: 'skipped', value: ModerationState.Skipped}, {key: 'onmoderation', value: ModerationState.onModeration}
                 ],
-                groupBy: 'chosentheme.id',
-                addGroupBy: ['grade.id', 'gradetheme.id'],
-                
+                groupBy: 'chosentheme.id',                
             });
         const user = await query.getRawOne();
 
